@@ -7,7 +7,7 @@
 
 A thin Bash wrapper around **Ubuntu Security Guide (USG)** for hardening and auditing Ubuntu 24.04 LTS Server against the CIS Ubuntu Linux 24.04 LTS Benchmark v1.0.0.
 
-> ⚠️ **Disclaimer:** Hardening makes deep changes to your system configuration. Only use this on fresh installations or in a test environment. Always take a snapshot before running. The author is not responsible for loss of access or functionality.
+⚠️ **Disclaimer:** Hardening makes deep changes to your system configuration. Only use this on fresh installations or in a test environment. Always take a snapshot before running. The author is not responsible for loss of access or functionality.
 
 ---
 
