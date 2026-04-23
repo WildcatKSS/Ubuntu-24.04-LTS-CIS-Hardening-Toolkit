@@ -42,7 +42,11 @@ cd Ubuntu-24.04-LTS-CIS-Hardening-Toolkit
 sudo ./harden.sh
 ```
 
-The script will ask which CIS profile to apply:
+The script asks every question **up front** so the rest of the run is fully unattended:
+
+1. CIS profile to apply (Level 1 or Level 2 Server)
+2. Ubuntu Pro token — only prompted if the machine is not yet attached
+3. Whether to automatically reboot when hardening finishes
 
 ```
 Select CIS profile:
@@ -51,9 +55,7 @@ Select CIS profile:
   q) Quit
 ```
 
-After hardening completes, the script prompts whether to reboot immediately. A reboot is required to apply all changes.
-
-`harden.sh` automatically backs up system configuration to `/var/backups/cis-hardening/` before applying any changes.
+After you answer these, the script runs end-to-end without further input: it updates Ubuntu, sets up Ubuntu Pro + USG, backs up system configuration to `/var/backups/cis-hardening/`, applies the CIS profile, and reboots (or exits) based on your earlier answer.
 
 ### Roll back
 
@@ -70,6 +72,78 @@ sudo ./audit.sh
 ```
 
 The HTML report is saved to `/var/log/cis-audit/` and `/var/lib/usg/usg-report.html`.
+
+---
+
+## Workflow — what each script does
+
+### `harden.sh` (fully unattended after upfront questions)
+
+1. Initialise logging to `/var/log/cis-hardening.log` + syslog (tag `cis-hardening`)
+2. Preflight: require root, verify Ubuntu 24.04
+3. **Upfront questions**: CIS profile (L1/L2), Ubuntu Pro token (if needed), auto-reboot yes/no
+4. **Full Ubuntu update**: `apt-get update` → `apt-get dist-upgrade -y` → `apt-get autoremove -y` (with `DEBIAN_FRONTEND=noninteractive` and `--force-confold` to avoid dpkg prompts)
+5. Ubuntu Pro setup: install `ubuntu-advantage-tools` if missing, `pro attach` using the collected token, `pro enable usg`
+6. Install the `usg` package if it is not already present
+7. Back up `/etc/ssh`, `/etc/pam.d`, `/etc/security`, `/etc/sysctl.*`, `/etc/audit`, `/etc/rsyslog.*`, `/etc/modprobe.d`, `/etc/login.defs`, `/etc/sudoers*`, `/etc/cron.*`, `/etc/fstab`, `/boot/grub/grub.cfg` to `/var/backups/cis-hardening/pre-hardening-<timestamp>.tar.gz`
+8. Build USG arguments (adds `--tailoring-file` if `tailoring/<profile>.xml` exists)
+9. Run `usg fix <profile>` to apply the benchmark
+10. Reboot automatically (if you chose yes) or log a reminder to run `sudo reboot`
+
+### `audit.sh` (read-only)
+
+1. Initialise logging
+2. Preflight + ensure USG is available
+3. Ask which profile to audit
+4. Run `usg audit <profile>` (never modifies the system; exit code 1 on non-compliance is expected)
+5. Copy the HTML report to `/var/log/cis-audit/report-<timestamp>.html`
+
+### `rollback.sh`
+
+1. Initialise logging
+2. Require root
+3. Find the most recent `pre-hardening-*.tar.gz` in `/var/backups/cis-hardening/`
+4. Ask for confirmation (the only question)
+5. Extract the tarball over `/` to restore configuration
+6. Advise manual `sudo reboot`
+
+### `change-cis-profile.sh`
+
+1. Initialise logging
+2. Preflight + ensure USG is available
+3. Ask which profile to customise; confirm overwrite if a tailoring file already exists
+4. Launch the USG browser wizard (`usg generate-tailoring`) — save selections there
+5. Tailoring file is stored in `tailoring/<profile>.xml` and picked up automatically by `harden.sh` / `audit.sh`
+
+---
+
+## Logging
+
+All scripts log via a shared 8-level logger modelled on syslog severity:
+
+| Level | Name    | Colour                |
+|-------|---------|-----------------------|
+| 0     | emerg   | white on red          |
+| 1     | alert   | bold red              |
+| 2     | crit    | magenta               |
+| 3     | err     | red                   |
+| 4     | warning | yellow                |
+| 5     | notice  | cyan                  |
+| 6     | info    | blue                  |
+| 7     | debug   | grey                  |
+
+Every message is written to three places:
+
+- Terminal, with colour per level (warnings and above go to stderr)
+- `/var/log/cis-hardening.log`, without ANSI codes — `grep`-friendly with `[YYYY-MM-DD HH:MM:SS] [LEVEL  ]` prefix
+- Syslog via `logger -t cis-hardening -p user.<level>` — view with `journalctl -t cis-hardening`
+
+Environment variables:
+
+| Variable          | Default | Meaning                                              |
+|-------------------|---------|------------------------------------------------------|
+| `LOG_LEVEL`       | `7`     | Suppress levels above this number (e.g. `4` = warning+) |
+| `SYSLOG_ENABLED`  | `1`     | Set to `0` to disable syslog forwarding              |
 
 ---
 
@@ -103,12 +177,14 @@ Tailoring files are loaded automatically when present — no extra configuration
 
 ```
 .
-├── harden.sh                  # Apply hardening via USG fix (backs up before running)
-├── audit.sh                   # Compliance audit via USG audit
+├── harden.sh                  # Full Ubuntu update + CIS hardening via USG fix (unattended)
+├── audit.sh                   # Compliance audit via USG audit (read-only)
 ├── rollback.sh                # Restore the most recent pre-hardening backup
 ├── change-cis-profile.sh      # Customise a profile via the USG tailoring wizard
 ├── lib/
-│   └── common.sh              # Shared functions (logging, preflight, USG setup, backup)
+│   └── common.sh              # Shared helpers: 8-level logger (file + syslog),
+│                              #   init_logging, collect_answers (upfront questions),
+│                              #   system_update, preflight, USG/Pro setup, backup
 └── tailoring/
     ├── level1-server.xml      # Optional customisations for the L1 profile
     └── level2-server.xml      # Optional customisations for the L2 profile
