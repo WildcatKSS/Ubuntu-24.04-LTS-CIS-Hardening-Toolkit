@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Pas een CIS-profiel aan via de USG tailoring wizard.
-# Het gegenereerde tailoring-bestand wordt automatisch geladen door harden.sh en audit.sh.
+# Customise a CIS profile via the USG tailoring wizard.
+# The generated tailoring file is automatically loaded by harden.sh and audit.sh.
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -18,21 +18,21 @@ TAILORING_FILE="$SCRIPT_DIR/tailoring/${PROFILE}.xml"
 
 if [[ -f "$TAILORING_FILE" ]]; then
     echo
-    log_warn "Er bestaat al een tailoring-bestand voor dit profiel:"
+    log_warn "A tailoring file already exists for this profile:"
     log_warn "  $TAILORING_FILE"
     echo
-    read -rp "Overschrijven met een nieuw tailoring-bestand? [j/N]: " confirm
-    [[ "$confirm" =~ ^[jJ]$ ]] || { log_info "Afgebroken. Bestaand bestand blijft ongewijzigd."; exit 0; }
+    read -rp "Overwrite with a new tailoring file? [y/N]: " confirm
+    [[ "$confirm" =~ ^[yY]$ ]] || { log_info "Aborted. Existing file unchanged."; exit 0; }
 fi
 
 echo
-log_info "USG tailoring wizard wordt gestart voor profiel: $USG_PROFILE"
-log_info "Er opent een browser waarin je per CIS-control kunt kiezen of deze actief is."
-log_info "Sla de selectie op in de browser om het tailoring-bestand aan te maken."
+log_info "Starting USG tailoring wizard for profile: $USG_PROFILE"
+log_info "A browser will open where you can enable or disable individual CIS controls."
+log_info "Save your selection in the browser to generate the tailoring file."
 echo
 
 usg generate-tailoring "$USG_PROFILE" "$TAILORING_FILE"
 
 echo
-log_success "Tailoring-bestand opgeslagen: $TAILORING_FILE"
-echo "Voer nu ./harden.sh of ./audit.sh uit — het bestand wordt automatisch gebruikt."
+log_success "Tailoring file saved: $TAILORING_FILE"
+echo "Run ./harden.sh or ./audit.sh — the file will be loaded automatically."

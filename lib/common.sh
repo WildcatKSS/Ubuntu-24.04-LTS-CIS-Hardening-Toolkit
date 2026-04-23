@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Gemeenschappelijke functies — niet direct uitvoeren, maar sourcen vanuit harden.sh of audit.sh
+# Shared functions — do not execute directly; source from harden.sh or audit.sh
 
 readonly RED='\033[0;31m'
 readonly GREEN='\033[0;32m'
@@ -14,97 +14,97 @@ readonly REQUIRED_UBUNTU_VERSION="24.04"
 log_info()    { echo -e "${BLUE}[INFO]${NC}  $*" | tee -a "$LOG_FILE"; }
 log_success() { echo -e "${GREEN}[OK]${NC}    $*" | tee -a "$LOG_FILE"; }
 log_warn()    { echo -e "${YELLOW}[WARN]${NC}  $*" | tee -a "$LOG_FILE"; }
-log_error()   { echo -e "${RED}[FOUT]${NC}  $*" | tee -a "$LOG_FILE" >&2; }
+log_error()   { echo -e "${RED}[ERROR]${NC} $*" | tee -a "$LOG_FILE" >&2; }
 die()         { log_error "$*"; exit 1; }
 
 require_root() {
-    [[ $EUID -eq 0 ]] || die "Root-rechten vereist. Gebruik: sudo $0"
+    [[ $EUID -eq 0 ]] || die "Root privileges required. Use: sudo $0"
 }
 
 check_ubuntu_version() {
     local version
-    version=$(lsb_release -rs 2>/dev/null) || die "Kan Ubuntu-versie niet bepalen (lsb_release ontbreekt)."
+    version=$(lsb_release -rs 2>/dev/null) || die "Cannot determine Ubuntu version (lsb_release missing)."
     if [[ "$version" != "$REQUIRED_UBUNTU_VERSION" ]]; then
-        log_warn "Verwacht Ubuntu $REQUIRED_UBUNTU_VERSION, gevonden: $version. Ga op eigen risico verder."
+        log_warn "Expected Ubuntu $REQUIRED_UBUNTU_VERSION, found: $version. Proceeding at your own risk."
     fi
 }
 
-# Zorgt dat Ubuntu Pro is geactiveerd en de USG-service is ingeschakeld.
-# Leidt de gebruiker interactief door: ubuntu-advantage-tools → pro attach → pro enable usg.
+# Ensures Ubuntu Pro is attached and the USG service is enabled.
+# Guides the user interactively: ubuntu-advantage-tools → pro attach → pro enable usg.
 setup_ubuntu_pro() {
     echo
     echo "┌─────────────────────────────────────────────────────┐"
     echo "│           Ubuntu Pro & USG Setup                    │"
     echo "│                                                     │"
-    echo "│  USG vereist Ubuntu Pro (gratis tot 5 apparaten).  │"
-    echo "│  Token ophalen: https://ubuntu.com/pro             │"
+    echo "│  USG requires Ubuntu Pro (free for up to 5 PCs).  │"
+    echo "│  Get your token at: https://ubuntu.com/pro         │"
     echo "└─────────────────────────────────────────────────────┘"
     echo
 
-    # Stap 1 — ubuntu-advantage-tools
+    # Step 1 — ubuntu-advantage-tools
     if ! command -v pro &>/dev/null; then
-        log_info "[1/3] ubuntu-advantage-tools installeren..."
+        log_info "[1/3] Installing ubuntu-advantage-tools..."
         apt-get install -y ubuntu-advantage-tools \
-            || die "Installatie van ubuntu-advantage-tools mislukt."
-        log_success "[1/3] ubuntu-advantage-tools geïnstalleerd."
+            || die "Failed to install ubuntu-advantage-tools."
+        log_success "[1/3] ubuntu-advantage-tools installed."
     else
-        log_info "[1/3] ubuntu-advantage-tools aanwezig."
+        log_info "[1/3] ubuntu-advantage-tools already present."
     fi
 
-    # Stap 2 — Ubuntu Pro activeren (attach)
+    # Step 2 — Attach Ubuntu Pro
     if ! pro status 2>/dev/null | grep -q "This machine is attached"; then
-        log_info "[2/3] Ubuntu Pro is nog niet geactiveerd op dit systeem."
-        echo "      Haal je gratis token op via: https://ubuntu.com/pro"
+        log_info "[2/3] Ubuntu Pro is not yet attached to this system."
+        echo "      Get your free token at: https://ubuntu.com/pro"
         echo
         local pro_token
-        read -rp "      Voer je Ubuntu Pro token in: " pro_token
-        [[ -n "$pro_token" ]] || die "Geen token opgegeven. Afgebroken."
+        read -rp "      Enter your Ubuntu Pro token: " pro_token
+        [[ -n "$pro_token" ]] || die "No token provided. Aborting."
         pro attach "$pro_token" \
-            || die "Ubuntu Pro activering mislukt. Controleer je token en probeer opnieuw."
-        log_success "[2/3] Ubuntu Pro succesvol geactiveerd."
+            || die "Ubuntu Pro attach failed. Check your token and try again."
+        log_success "[2/3] Ubuntu Pro attached successfully."
     else
-        log_info "[2/3] Ubuntu Pro is al geactiveerd."
+        log_info "[2/3] Ubuntu Pro is already attached."
     fi
 
-    # Stap 3 — USG service inschakelen
+    # Step 3 — Enable USG service
     if ! pro status 2>/dev/null | grep -q "usg.*enabled"; then
-        log_info "[3/3] USG service activeren via Ubuntu Pro..."
-        pro enable usg || die "Activeren van USG service mislukt."
-        log_success "[3/3] USG service ingeschakeld."
+        log_info "[3/3] Enabling USG service via Ubuntu Pro..."
+        pro enable usg || die "Failed to enable the USG service."
+        log_success "[3/3] USG service enabled."
     else
-        log_info "[3/3] USG service is al ingeschakeld."
+        log_info "[3/3] USG service is already enabled."
     fi
 
     echo
-    log_success "Ubuntu Pro en USG service zijn actief."
+    log_success "Ubuntu Pro and USG service are active."
     echo
 }
 
-# Controleert of het usg-pakket geïnstalleerd is; installeert het indien nodig.
-# Roept setup_ubuntu_pro() aan als USG nog niet aanwezig is.
+# Checks whether the usg package is installed; installs it if not.
+# Calls setup_ubuntu_pro() when USG is not yet present.
 require_usg() {
     if command -v usg &>/dev/null; then
-        log_info "USG gevonden: $(usg --version 2>/dev/null || echo 'versie onbekend')"
+        log_info "USG found: $(usg --version 2>/dev/null || echo 'version unknown')"
         return
     fi
 
-    log_info "USG niet gevonden — setup starten..."
+    log_info "USG not found — starting setup..."
     setup_ubuntu_pro
 
-    log_info "USG pakket installeren..."
-    apt-get install -y usg || die "Installatie van het usg-pakket mislukt."
-    log_success "USG pakket geïnstalleerd."
+    log_info "Installing USG package..."
+    apt-get install -y usg || die "Failed to install the usg package."
+    log_success "USG package installed."
 }
 
-# Maakt een back-up van systeemconfiguraties die USG typisch wijzigt.
-# Slaat de back-up op in $BACKUP_DIR en exporteert BACKUP_FILE.
+# Backs up system configuration files typically modified by USG.
+# Saves the backup to $BACKUP_DIR and exports BACKUP_FILE.
 create_backup() {
     local timestamp
     timestamp=$(date +%Y%m%d-%H%M%S)
     local backup_file="$BACKUP_DIR/pre-hardening-${timestamp}.tar.gz"
 
     mkdir -p "$BACKUP_DIR"
-    log_info "Back-up maken van systeemconfiguratie..."
+    log_info "Backing up system configuration..."
 
     local paths_to_backup=(
         /etc/ssh
@@ -132,37 +132,37 @@ create_backup() {
     done
 
     tar -czf "$backup_file" "${existing[@]}" 2>/dev/null \
-        || log_warn "Sommige bestanden konden niet worden meegenomen in de back-up."
+        || log_warn "Some files could not be included in the backup."
 
     export BACKUP_FILE="$backup_file"
-    log_success "Back-up opgeslagen: $backup_file"
+    log_success "Backup saved: $backup_file"
 }
 
-# Toont een menu en exporteert PROFILE (korte naam) en USG_PROFILE (usg-profielnaam).
+# Displays a profile selection menu and exports PROFILE (short name) and USG_PROFILE (usg profile name).
 select_profile() {
     echo
-    echo "Selecteer CIS-profiel:"
-    echo "  1) Level 1 Server  — aanbevolen baseline"
-    echo "  2) Level 2 Server  — strenger, mogelijk impact op functionaliteit"
-    echo "  q) Afsluiten"
+    echo "Select CIS profile:"
+    echo "  1) Level 1 Server  — recommended baseline"
+    echo "  2) Level 2 Server  — stricter, may impact functionality"
+    echo "  q) Quit"
     echo
 
     local choice
-    read -rp "Keuze [1/2/q]: " choice
+    read -rp "Choice [1/2/q]: " choice
 
     case "$choice" in
         1) PROFILE="level1-server"; USG_PROFILE="cis_level1_server" ;;
         2) PROFILE="level2-server"; USG_PROFILE="cis_level2_server" ;;
-        q|Q) log_info "Afgebroken door gebruiker."; exit 0 ;;
-        *) die "Ongeldige keuze: '$choice'" ;;
+        q|Q) log_info "Aborted by user."; exit 0 ;;
+        *) die "Invalid choice: '$choice'" ;;
     esac
 
     export PROFILE USG_PROFILE
 }
 
-# Bouwt de USG-argumentenlijst op, inclusief tailoring-bestand indien aanwezig.
-# Gebruik: build_usg_args "$SCRIPT_DIR/tailoring"
-# Resultaat wordt opgeslagen in de globale array USG_ARGS.
+# Builds the USG argument list, including a tailoring file when present.
+# Usage: build_usg_args "$SCRIPT_DIR/tailoring"
+# Result is stored in the global array USG_ARGS.
 build_usg_args() {
     local tailoring_dir="$1"
     local tailoring_file="$tailoring_dir/${PROFILE}.xml"
@@ -170,7 +170,7 @@ build_usg_args() {
     USG_ARGS=("$USG_PROFILE")
 
     if [[ -f "$tailoring_file" ]]; then
-        log_info "Tailoring-bestand gevonden: $tailoring_file"
+        log_info "Tailoring file found: $tailoring_file"
         USG_ARGS=("--tailoring-file" "$tailoring_file" "$USG_PROFILE")
     fi
 

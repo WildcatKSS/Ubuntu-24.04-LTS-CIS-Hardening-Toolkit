@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Pas CIS-hardening toe via USG op een Ubuntu 24.04 LTS Server.
+# Apply CIS hardening via USG on an Ubuntu 24.04 LTS Server.
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -7,7 +7,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/lib/common.sh"
 
 mkdir -p "$(dirname "$LOG_FILE")"
-echo "=== Hardening gestart: $(date) ===" >> "$LOG_FILE"
+echo "=== Hardening started: $(date) ===" >> "$LOG_FILE"
 
 require_root
 check_ubuntu_version
@@ -17,15 +17,21 @@ select_profile
 create_backup
 build_usg_args "$SCRIPT_DIR/tailoring"
 
-log_info "Profiel: $USG_PROFILE"
-log_info "USG fix wordt uitgevoerd..."
+log_info "Profile: $USG_PROFILE"
+log_info "Running USG fix..."
 
 usg fix "${USG_ARGS[@]}"
 
-log_success "Hardening voltooid. Back-up bewaard in: $BACKUP_FILE"
+log_success "Hardening complete. Backup saved at: $BACKUP_FILE"
 echo
-echo "Herstart het systeem om alle wijzigingen door te voeren:"
-echo "  sudo reboot"
+read -rp "Restart the system now to apply all changes? [y/N] " answer
+if [[ "${answer,,}" =~ ^y(es)?$ ]]; then
+    log_info "Rebooting system..."
+    reboot
+else
+    echo "Restart the system manually when ready:"
+    echo "  sudo reboot"
+fi
 echo
-echo "Terugdraaien indien nodig:"
+echo "To roll back if needed:"
 echo "  sudo ./rollback.sh"

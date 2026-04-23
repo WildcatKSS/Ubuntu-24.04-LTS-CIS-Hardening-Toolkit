@@ -1,38 +1,40 @@
 # Ubuntu 24.04 LTS CIS Hardening Toolkit
 
 ![Status](https://img.shields.io/badge/status-beta-blue)
-![Licentie](https://img.shields.io/badge/licentie-MIT-blue)
+![License](https://img.shields.io/badge/license-MIT-blue)
 ![Benchmark](https://img.shields.io/badge/CIS%20Benchmark-Ubuntu%2024.04%20v1.0.0-green)
 ![Backend](https://img.shields.io/badge/backend-Ubuntu%20Security%20Guide%20(USG)-orange)
 
-Een dunne Bash-wrapper rond **Ubuntu Security Guide (USG)** voor het hardenen en auditeren van Ubuntu 24.04 LTS Server op basis van de CIS Ubuntu Linux 24.04 LTS Benchmark v1.0.0.
+A thin Bash wrapper around **Ubuntu Security Guide (USG)** for hardening and auditing Ubuntu 24.04 LTS Server against the CIS Ubuntu Linux 24.04 LTS Benchmark v1.0.0.
 
-> ⚠️ **Disclaimer:** Hardening wijzigt diepgaand de systeemconfiguratie. Gebruik uitsluitend op verse installaties of in een testomgeving. Maak altijd een snapshot vóór uitvoering. De auteur is niet verantwoordelijk voor verlies van toegang of functionaliteit.
+⚠️ **Disclaimer:** Hardening makes deep changes to your system configuration. Only use this on fresh installations or in a test environment. Always take a snapshot before running. The author is not responsible for loss of access or functionality.
 
 ---
 
-## Vereisten
+## Requirements
 
-| Vereiste | Details |
+| Requirement | Details |
 |---|---|
 | OS | Ubuntu Server 24.04 LTS (Noble Numbat), x86_64 |
-| Rechten | Root of sudo |
-| Ubuntu Pro | Gratis tot 5 apparaten — [ubuntu.com/pro](https://ubuntu.com/pro) |
-| USG | Wordt automatisch geïnstalleerd als Ubuntu Pro actief is |
+| Privileges | Root or sudo |
+| Ubuntu Pro | Free for up to 5 machines — [ubuntu.com/pro](https://ubuntu.com/pro) |
+| USG | Installed automatically when Ubuntu Pro is active |
 
-### Ubuntu Pro activeren (eenmalig)
+### Ubuntu Pro (one-time setup)
 
-```bash
-sudo pro attach <jouw-token>   # token ophalen op ubuntu.com/pro
-sudo pro enable usg
-sudo apt install usg
-```
+The script handles Ubuntu Pro setup automatically. During the first run it will:
+1. Install `ubuntu-advantage-tools` if missing
+2. Prompt you for your Ubuntu Pro token and run `pro attach`
+3. Enable the USG service via `pro enable usg`
+4. Install the `usg` package
+
+Get your free token at [ubuntu.com/pro](https://ubuntu.com/pro) before running the script.
 
 ---
 
-## Gebruik
+## Usage
 
-### Hardening toepassen
+### Apply hardening
 
 ```bash
 git clone https://github.com/WildcatKSS/Ubuntu-24.04-LTS-CIS-Hardening-Toolkit.git
@@ -40,115 +42,115 @@ cd Ubuntu-24.04-LTS-CIS-Hardening-Toolkit
 sudo ./harden.sh
 ```
 
-Het script vraagt welk CIS-profiel je wilt toepassen:
+The script will ask which CIS profile to apply:
 
 ```
-Selecteer CIS-profiel:
-  1) Level 1 Server  — aanbevolen baseline
-  2) Level 2 Server  — strenger, mogelijk impact op functionaliteit
-  q) Afsluiten
+Select CIS profile:
+  1) Level 1 Server  — recommended baseline
+  2) Level 2 Server  — stricter, may impact functionality
+  q) Quit
 ```
 
-Na voltooiing: `sudo reboot`
+After hardening completes, the script prompts whether to reboot immediately. A reboot is required to apply all changes.
 
-`harden.sh` maakt automatisch een back-up van systeemconfiguraties in `/var/backups/cis-hardening/` vóór de hardening wordt toegepast.
+`harden.sh` automatically backs up system configuration to `/var/backups/cis-hardening/` before applying any changes.
 
-### Terugdraaien (rollback)
+### Roll back
 
 ```bash
 sudo ./rollback.sh
 ```
 
-Zet de meest recente pre-hardening back-up terug en vraagt bevestiging vóór wijzigingen.
+Restores the most recent pre-hardening backup and asks for confirmation before making any changes.
 
-### Compliance auditeren (zonder wijzigingen)
+### Audit compliance (read-only)
 
 ```bash
 sudo ./audit.sh
 ```
 
-Het HTML-rapport wordt opgeslagen in `/var/log/cis-audit/` en `/var/lib/usg/usg-report.html`.
+The HTML report is saved to `/var/log/cis-audit/` and `/var/lib/usg/usg-report.html`.
 
 ---
 
-## Profielen aanpassen (tailoring)
+## Customise profiles (tailoring)
 
-Standaard worden de profielen ongewijzigd toegepast. Voor omgeving-specifieke aanpassingen gebruik je tailoring-bestanden.
+By default profiles are applied without modification. For environment-specific adjustments, use tailoring files.
 
-### Via de toolkit (aanbevolen)
+### Via the toolkit (recommended)
 
 ```bash
 sudo ./change-cis-profile.sh
 ```
 
-Kies het profiel (L1 of L2). USG opent een browser-wizard waar je per CIS-control kunt kiezen of deze actief is. Na opslaan wordt het tailoring-bestand bewaard in `tailoring/` en automatisch geladen door `harden.sh` en `audit.sh`.
+Select the profile (L1 or L2). USG opens a browser wizard where you can enable or disable individual CIS controls. After saving, the tailoring file is stored in `tailoring/` and loaded automatically by `harden.sh` and `audit.sh`.
 
-### Handmatig bewerken
+### Edit manually
 
-Bewerk `tailoring/level1-server.xml` of `tailoring/level2-server.xml` direct.
-Voeg `<xccdf-1.2:select>` elementen toe in het `Profile`-blok:
+Edit `tailoring/level1-server.xml` or `tailoring/level2-server.xml` directly.
+Add `<xccdf-1.2:select>` elements inside the `Profile` block:
 
 ```xml
-<!-- Control uitschakelen -->
+<!-- Disable a control -->
 <xccdf-1.2:select idref="xccdf_org.ssgproject.content_rule_sshd_set_loglevel_verbose" selected="false"/>
 ```
 
-De tailoring-bestanden worden automatisch geladen als ze aanwezig zijn — geen configuratie nodig.
+Tailoring files are loaded automatically when present — no extra configuration needed.
 
 ---
 
-## Projectstructuur
+## Project structure
 
 ```
 .
-├── harden.sh                  # Hardening via USG fix (maakt back-up voor uitvoering)
-├── audit.sh                   # Compliance-audit via USG audit
-├── rollback.sh                # Zet meest recente pre-hardening back-up terug
-├── change-cis-profile.sh      # Profiel aanpassen via USG tailoring wizard
+├── harden.sh                  # Apply hardening via USG fix (backs up before running)
+├── audit.sh                   # Compliance audit via USG audit
+├── rollback.sh                # Restore the most recent pre-hardening backup
+├── change-cis-profile.sh      # Customise a profile via the USG tailoring wizard
 ├── lib/
-│   └── common.sh              # Gedeelde functies (logging, preflight, USG setup, back-up)
+│   └── common.sh              # Shared functions (logging, preflight, USG setup, backup)
 └── tailoring/
-    ├── level1-server.xml      # Optionele aanpassingen op L1 profiel
-    └── level2-server.xml      # Optionele aanpassingen op L2 profiel
+    ├── level1-server.xml      # Optional customisations for the L1 profile
+    └── level2-server.xml      # Optional customisations for the L2 profile
 ```
 
 ---
 
 ## Scope
 
-| Item | Waarde |
+| Item | Value |
 |---|---|
-| Doel-OS | Ubuntu Server 24.04 LTS |
-| Architectuur | x86_64 |
+| Target OS | Ubuntu Server 24.04 LTS |
+| Architecture | x86_64 |
 | Benchmark | CIS Ubuntu Linux 24.04 LTS v1.0.0 |
-| Profielen | Level 1 Server, Level 2 Server |
-| Niet in scope | Workstation-profielen, container-images |
+| Profiles | Level 1 Server, Level 2 Server |
+| Out of scope | Workstation profiles, container images |
 
 ---
 
-## Hoe USG controls uitvoert
+## How USG applies controls
 
-USG leest de SCAP-benchmark bestanden in `/usr/share/ubuntu-scap-security-guides/current/benchmarks/` en past de controls toe via het onderliggende OpenSCAP-framework. Bij `usg fix` worden systeeminstellingen gewijzigd; bij `usg audit` wordt alleen gerapporteerd.
+USG reads the SCAP benchmark files in `/usr/share/ubuntu-scap-security-guides/current/benchmarks/` and applies controls via the underlying OpenSCAP framework. `usg fix` modifies system settings; `usg audit` only reports.
 
-Controls zoeken:
+Useful commands:
 
 ```bash
-# Welke rules zijn beschikbaar in een profiel?
+# List rules available in a profile
 usg audit cis_level1_server 2>&1 | grep "Rule"
 
-# Benchmark bestanden bekijken
+# Browse benchmark files
 ls /usr/share/ubuntu-scap-security-guides/current/benchmarks/
 ```
 
 ---
 
-## Credits & Referenties
+## Credits & References
 
 - [Ubuntu Security Guide (USG)](https://ubuntu.com/security/certifications/docs/usg) — Canonical
 - [CIS Ubuntu Linux 24.04 LTS Benchmark](https://www.cisecurity.org/benchmark/ubuntu_linux) — Center for Internet Security
 
 ---
 
-## Licentie
+## License
 
-MIT — zie `LICENSE`. CIS Benchmarks zijn eigendom van het Center for Internet Security; deze repository bevat geen benchmarkteksten.
+MIT — see `LICENSE`. CIS Benchmarks are the property of the Center for Internet Security; this repository contains no benchmark text.
