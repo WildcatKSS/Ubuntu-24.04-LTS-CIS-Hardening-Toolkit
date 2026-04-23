@@ -28,28 +28,67 @@ check_ubuntu_version() {
     fi
 }
 
-# Controleert of USG beschikbaar is en installeert het indien nodig via Ubuntu Pro.
+# Controleert of USG beschikbaar is en leidt de gebruiker stap voor stap
+# door de volledige setup: ubuntu-advantage-tools → pro attach → pro enable usg → apt install usg.
 require_usg() {
     if command -v usg &>/dev/null; then
         log_info "USG gevonden: $(usg --version 2>/dev/null || echo 'versie onbekend')"
         return
     fi
 
-    log_info "USG niet gevonden. Installatie via Ubuntu Pro wordt gestart..."
+    echo
+    echo "┌─────────────────────────────────────────────────────┐"
+    echo "│           Ubuntu Pro & USG Setup                    │"
+    echo "│                                                     │"
+    echo "│  USG (Ubuntu Security Guide) is Canonicals         │"
+    echo "│  officiële CIS-hardening tool. Het is gratis te    │"
+    echo "│  gebruiken via Ubuntu Pro (tot 5 apparaten).       │"
+    echo "│                                                     │"
+    echo "│  Token ophalen: https://ubuntu.com/pro             │"
+    echo "└─────────────────────────────────────────────────────┘"
+    echo
 
+    # Stap 1 — ubuntu-advantage-tools
     if ! command -v pro &>/dev/null; then
-        die "ubuntu-advantage-tools ontbreekt. Installeer met: sudo apt install ubuntu-advantage-tools"
+        log_info "[1/4] ubuntu-advantage-tools installeren..."
+        apt-get install -y ubuntu-advantage-tools \
+            || die "Installatie van ubuntu-advantage-tools mislukt."
+        log_success "[1/4] ubuntu-advantage-tools geïnstalleerd."
+    else
+        log_info "[1/4] ubuntu-advantage-tools aanwezig."
     fi
 
+    # Stap 2 — Ubuntu Pro activeren (attach)
+    if ! pro status 2>/dev/null | grep -q "This machine is attached"; then
+        log_info "[2/4] Ubuntu Pro is nog niet geactiveerd op dit systeem."
+        echo "      Haal je gratis token op via: https://ubuntu.com/pro"
+        echo
+        local pro_token
+        read -rp "      Voer je Ubuntu Pro token in: " pro_token
+        [[ -n "$pro_token" ]] || die "Geen token opgegeven. Afgebroken."
+        pro attach "$pro_token" || die "Ubuntu Pro activering mislukt. Controleer je token en probeer opnieuw."
+        log_success "[2/4] Ubuntu Pro succesvol geactiveerd."
+    else
+        log_info "[2/4] Ubuntu Pro is al geactiveerd."
+    fi
+
+    # Stap 3 — USG service inschakelen
     if ! pro status 2>/dev/null | grep -q "usg.*enabled"; then
-        log_warn "Ubuntu Pro USG-service is niet actief."
-        log_warn "Activeer gratis (tot 5 apparaten) op: https://ubuntu.com/pro"
-        log_warn "Daarna: sudo pro enable usg"
-        die "Activeer Ubuntu Pro USG en voer dit script opnieuw uit."
+        log_info "[3/4] USG service activeren via Ubuntu Pro..."
+        pro enable usg || die "Activeren van USG service mislukt."
+        log_success "[3/4] USG service ingeschakeld."
+    else
+        log_info "[3/4] USG service is al ingeschakeld."
     fi
 
+    # Stap 4 — usg pakket installeren
+    log_info "[4/4] USG pakket installeren..."
     apt-get install -y usg || die "Installatie van het usg-pakket mislukt."
-    log_success "USG succesvol geïnstalleerd."
+    log_success "[4/4] USG pakket geïnstalleerd."
+
+    echo
+    log_success "USG is klaar voor gebruik."
+    echo
 }
 
 # Toont een menu en exporteert PROFILE (korte naam) en USG_PROFILE (usg-profielnaam).
