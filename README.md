@@ -68,15 +68,15 @@ Het HTML-rapport wordt opgeslagen in `/var/log/cis-audit/` en `/var/lib/usg/usg-
 
 Standaard worden de profielen ongewijzigd toegepast. Voor omgeving-specifieke aanpassingen gebruik je tailoring-bestanden.
 
-### Optie 1 — Interactief via USG (aanbevolen)
+### Via de toolkit (aanbevolen)
 
 ```bash
-sudo usg generate-tailoring cis_level1_server tailoring/level1-server.xml
+sudo ./change-cis-profile.sh
 ```
 
-Dit opent een browser-gebaseerde GUI waarin je per control kunt kiezen of deze actief is.
+Kies het profiel (L1 of L2). USG opent een browser-wizard waar je per CIS-control kunt kiezen of deze actief is. Na opslaan wordt het tailoring-bestand bewaard in `tailoring/` en automatisch geladen door `harden.sh` en `audit.sh`.
 
-### Optie 2 — Handmatig bewerken
+### Handmatig bewerken
 
 Bewerk `tailoring/level1-server.xml` of `tailoring/level2-server.xml` direct.
 Voeg `<xccdf-1.2:select>` elementen toe in het `Profile`-blok:
@@ -96,8 +96,9 @@ De tailoring-bestanden worden automatisch geladen als ze aanwezig zijn — geen 
 .
 ├── harden.sh                  # Hardening via USG fix
 ├── audit.sh                   # Compliance-audit via USG audit
+├── change-cis-profile.sh      # Profiel aanpassen via USG tailoring wizard
 ├── lib/
-│   └── common.sh              # Gedeelde functies (logging, preflight, profielkeuze)
+│   └── common.sh              # Gedeelde functies (logging, preflight, profielkeuze, USG setup)
 └── tailoring/
     ├── level1-server.xml      # Optionele aanpassingen op L1 profiel
     └── level2-server.xml      # Optionele aanpassingen op L2 profiel
