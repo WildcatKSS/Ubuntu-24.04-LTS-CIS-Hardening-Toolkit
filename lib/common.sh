@@ -36,8 +36,8 @@ setup_ubuntu_pro() {
     echo "┌─────────────────────────────────────────────────────┐"
     echo "│           Ubuntu Pro & USG Setup                    │"
     echo "│                                                     │"
-    echo "│  USG requires Ubuntu Pro (free for up to 5 PCs).  │"
-    echo "│  Get your token at: https://ubuntu.com/pro         │"
+    echo "│  USG requires Ubuntu Pro (free for up to 5 PCs).    │"
+    echo "│  Get your token at: https://ubuntu.com/pro          │"
     echo "└─────────────────────────────────────────────────────┘"
     echo
 
