@@ -1,37 +1,37 @@
 #!/usr/bin/env bash
 # Apply CIS hardening via USG on an Ubuntu 24.04 LTS Server.
+# Asks all questions up front, then runs unattended.
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=lib/common.sh
 source "$SCRIPT_DIR/lib/common.sh"
 
-mkdir -p "$(dirname "$LOG_FILE")"
-echo "=== Hardening started: $(date) ===" >> "$LOG_FILE"
+init_logging "Hardening"
 
 require_root
 check_ubuntu_version
-setup_ubuntu_pro
+
+# All interactive prompts live here — nothing after this line asks questions.
+collect_answers harden
+
+system_update
 require_usg
-select_profile
 create_backup
 build_usg_args "$SCRIPT_DIR/tailoring"
 
-log_info "Profile: $USG_PROFILE"
-log_info "Running USG fix..."
+log info "Profile: $USG_PROFILE"
+log info "Running USG fix..."
 
 usg fix "${USG_ARGS[@]}"
 
-log_success "Hardening complete. Backup saved at: $BACKUP_FILE"
-echo
-read -rp "Restart the system now to apply all changes? [y/N] " answer
-if [[ "${answer,,}" =~ ^y(es)?$ ]]; then
-    log_info "Rebooting system..."
+log success "Hardening complete. Backup saved at: $BACKUP_FILE"
+
+if [[ "${REBOOT_CHOICE:-no}" == "yes" ]]; then
+    log notice "Auto-reboot requested — rebooting now..."
     reboot
 else
-    echo "Restart the system manually when ready:"
-    echo "  sudo reboot"
+    log info "Restart the system manually when ready: sudo reboot"
 fi
-echo
-echo "To roll back if needed:"
-echo "  sudo ./rollback.sh"
+
+log info "To roll back if needed: sudo ./rollback.sh"

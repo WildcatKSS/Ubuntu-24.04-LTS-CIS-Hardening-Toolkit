@@ -6,7 +6,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=lib/common.sh
 source "$SCRIPT_DIR/lib/common.sh"
 
-mkdir -p "$(dirname "$LOG_FILE")"
+init_logging "Rollback"
 
 require_root
 
@@ -17,21 +17,18 @@ if [[ -z "$latest" ]]; then
 fi
 
 echo
-log_warn "This will restore system configuration from the following backup:"
-log_warn "  $latest"
-log_warn "Modified configuration files will be overwritten."
+log warning "This will restore system configuration from the following backup:"
+log warning "  $latest"
+log warning "Modified configuration files will be overwritten."
 echo
 
 read -rp "Are you sure? [y/N]: " confirm
-[[ "$confirm" =~ ^[yY]$ ]] || { log_info "Aborted. No changes made."; exit 0; }
+[[ "$confirm" =~ ^[yY]$ ]] || { log info "Aborted. No changes made."; exit 0; }
 
-echo "=== Rollback started: $(date) ===" >> "$LOG_FILE"
-log_info "Restoring from: $latest"
+log info "Restoring from: $latest"
 
 tar -xzf "$latest" -C / 2>/dev/null \
-    || log_warn "Some files could not be restored."
+    || log warning "Some files could not be restored."
 
-log_success "Rollback complete."
-echo
-echo "Restart the system to activate the restored configuration:"
-echo "  sudo reboot"
+log success "Rollback complete."
+log info "Restart the system to activate the restored configuration: sudo reboot"
