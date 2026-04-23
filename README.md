@@ -7,9 +7,6 @@
 
 Een dunne Bash-wrapper rond **Ubuntu Security Guide (USG)** voor het hardenen en auditeren van Ubuntu 24.04 LTS Server op basis van de CIS Ubuntu Linux 24.04 LTS Benchmark v1.0.0.
 
-> **Waarom een wrapper en niet zelf implementeren?**
-> USG is Canonicals officiële tool voor CIS-compliance op Ubuntu. Het bevat honderden nauwkeurig geïmplementeerde en geteste controls. Zelf implementeren zou het wiel opnieuw uitvinden — foutgevoeliger, minder onderhoudbaar, en altijd achter op updates. Deze toolkit biedt een eenvoudige interface bovenop USG, plus ondersteuning voor organisatie-specifieke tailoring.
-
 > ⚠️ **Disclaimer:** Hardening wijzigt diepgaand de systeemconfiguratie. Gebruik uitsluitend op verse installaties of in een testomgeving. Maak altijd een snapshot vóór uitvoering. De auteur is niet verantwoordelijk voor verlies van toegang of functionaliteit.
 
 ---
@@ -54,6 +51,16 @@ Selecteer CIS-profiel:
 
 Na voltooiing: `sudo reboot`
 
+`harden.sh` maakt automatisch een back-up van systeemconfiguraties in `/var/backups/cis-hardening/` vóór de hardening wordt toegepast.
+
+### Terugdraaien (rollback)
+
+```bash
+sudo ./rollback.sh
+```
+
+Zet de meest recente pre-hardening back-up terug en vraagt bevestiging vóór wijzigingen.
+
 ### Compliance auditeren (zonder wijzigingen)
 
 ```bash
@@ -94,11 +101,12 @@ De tailoring-bestanden worden automatisch geladen als ze aanwezig zijn — geen 
 
 ```
 .
-├── harden.sh                  # Hardening via USG fix
+├── harden.sh                  # Hardening via USG fix (maakt back-up voor uitvoering)
 ├── audit.sh                   # Compliance-audit via USG audit
+├── rollback.sh                # Zet meest recente pre-hardening back-up terug
 ├── change-cis-profile.sh      # Profiel aanpassen via USG tailoring wizard
 ├── lib/
-│   └── common.sh              # Gedeelde functies (logging, preflight, profielkeuze, USG setup)
+│   └── common.sh              # Gedeelde functies (logging, preflight, USG setup, back-up)
 └── tailoring/
     ├── level1-server.xml      # Optionele aanpassingen op L1 profiel
     └── level2-server.xml      # Optionele aanpassingen op L2 profiel

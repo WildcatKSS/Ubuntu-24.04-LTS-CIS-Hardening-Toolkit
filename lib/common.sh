@@ -8,6 +8,7 @@ readonly BLUE='\033[0;34m'
 readonly NC='\033[0m'
 
 readonly LOG_FILE="/var/log/cis-hardening.log"
+readonly BACKUP_DIR="/var/backups/cis-hardening"
 readonly REQUIRED_UBUNTU_VERSION="24.04"
 
 log_info()    { echo -e "${BLUE}[INFO]${NC}  $*" | tee -a "$LOG_FILE"; }
@@ -28,67 +29,113 @@ check_ubuntu_version() {
     fi
 }
 
-# Controleert of USG beschikbaar is en leidt de gebruiker stap voor stap
-# door de volledige setup: ubuntu-advantage-tools → pro attach → pro enable usg → apt install usg.
-require_usg() {
-    if command -v usg &>/dev/null; then
-        log_info "USG gevonden: $(usg --version 2>/dev/null || echo 'versie onbekend')"
-        return
-    fi
-
+# Zorgt dat Ubuntu Pro is geactiveerd en de USG-service is ingeschakeld.
+# Leidt de gebruiker interactief door: ubuntu-advantage-tools → pro attach → pro enable usg.
+setup_ubuntu_pro() {
     echo
     echo "┌─────────────────────────────────────────────────────┐"
     echo "│           Ubuntu Pro & USG Setup                    │"
     echo "│                                                     │"
-    echo "│  USG (Ubuntu Security Guide) is Canonicals         │"
-    echo "│  officiële CIS-hardening tool. Het is gratis te    │"
-    echo "│  gebruiken via Ubuntu Pro (tot 5 apparaten).       │"
-    echo "│                                                     │"
+    echo "│  USG vereist Ubuntu Pro (gratis tot 5 apparaten).  │"
     echo "│  Token ophalen: https://ubuntu.com/pro             │"
     echo "└─────────────────────────────────────────────────────┘"
     echo
 
     # Stap 1 — ubuntu-advantage-tools
     if ! command -v pro &>/dev/null; then
-        log_info "[1/4] ubuntu-advantage-tools installeren..."
+        log_info "[1/3] ubuntu-advantage-tools installeren..."
         apt-get install -y ubuntu-advantage-tools \
             || die "Installatie van ubuntu-advantage-tools mislukt."
-        log_success "[1/4] ubuntu-advantage-tools geïnstalleerd."
+        log_success "[1/3] ubuntu-advantage-tools geïnstalleerd."
     else
-        log_info "[1/4] ubuntu-advantage-tools aanwezig."
+        log_info "[1/3] ubuntu-advantage-tools aanwezig."
     fi
 
     # Stap 2 — Ubuntu Pro activeren (attach)
     if ! pro status 2>/dev/null | grep -q "This machine is attached"; then
-        log_info "[2/4] Ubuntu Pro is nog niet geactiveerd op dit systeem."
+        log_info "[2/3] Ubuntu Pro is nog niet geactiveerd op dit systeem."
         echo "      Haal je gratis token op via: https://ubuntu.com/pro"
         echo
         local pro_token
         read -rp "      Voer je Ubuntu Pro token in: " pro_token
         [[ -n "$pro_token" ]] || die "Geen token opgegeven. Afgebroken."
-        pro attach "$pro_token" || die "Ubuntu Pro activering mislukt. Controleer je token en probeer opnieuw."
-        log_success "[2/4] Ubuntu Pro succesvol geactiveerd."
+        pro attach "$pro_token" \
+            || die "Ubuntu Pro activering mislukt. Controleer je token en probeer opnieuw."
+        log_success "[2/3] Ubuntu Pro succesvol geactiveerd."
     else
-        log_info "[2/4] Ubuntu Pro is al geactiveerd."
+        log_info "[2/3] Ubuntu Pro is al geactiveerd."
     fi
 
     # Stap 3 — USG service inschakelen
     if ! pro status 2>/dev/null | grep -q "usg.*enabled"; then
-        log_info "[3/4] USG service activeren via Ubuntu Pro..."
+        log_info "[3/3] USG service activeren via Ubuntu Pro..."
         pro enable usg || die "Activeren van USG service mislukt."
-        log_success "[3/4] USG service ingeschakeld."
+        log_success "[3/3] USG service ingeschakeld."
     else
-        log_info "[3/4] USG service is al ingeschakeld."
+        log_info "[3/3] USG service is al ingeschakeld."
     fi
 
-    # Stap 4 — usg pakket installeren
-    log_info "[4/4] USG pakket installeren..."
-    apt-get install -y usg || die "Installatie van het usg-pakket mislukt."
-    log_success "[4/4] USG pakket geïnstalleerd."
+    echo
+    log_success "Ubuntu Pro en USG service zijn actief."
+    echo
+}
 
-    echo
-    log_success "USG is klaar voor gebruik."
-    echo
+# Controleert of het usg-pakket geïnstalleerd is; installeert het indien nodig.
+# Roept setup_ubuntu_pro() aan als USG nog niet aanwezig is.
+require_usg() {
+    if command -v usg &>/dev/null; then
+        log_info "USG gevonden: $(usg --version 2>/dev/null || echo 'versie onbekend')"
+        return
+    fi
+
+    log_info "USG niet gevonden — setup starten..."
+    setup_ubuntu_pro
+
+    log_info "USG pakket installeren..."
+    apt-get install -y usg || die "Installatie van het usg-pakket mislukt."
+    log_success "USG pakket geïnstalleerd."
+}
+
+# Maakt een back-up van systeemconfiguraties die USG typisch wijzigt.
+# Slaat de back-up op in $BACKUP_DIR en exporteert BACKUP_FILE.
+create_backup() {
+    local timestamp
+    timestamp=$(date +%Y%m%d-%H%M%S)
+    local backup_file="$BACKUP_DIR/pre-hardening-${timestamp}.tar.gz"
+
+    mkdir -p "$BACKUP_DIR"
+    log_info "Back-up maken van systeemconfiguratie..."
+
+    local paths_to_backup=(
+        /etc/ssh
+        /etc/pam.d
+        /etc/security
+        /etc/sysctl.conf
+        /etc/sysctl.d
+        /etc/audit
+        /etc/rsyslog.conf
+        /etc/rsyslog.d
+        /etc/modprobe.d
+        /etc/login.defs
+        /etc/sudoers
+        /etc/sudoers.d
+        /etc/cron.d
+        /etc/cron.daily
+        /etc/cron.weekly
+        /etc/fstab
+        /boot/grub/grub.cfg
+    )
+
+    local existing=()
+    for path in "${paths_to_backup[@]}"; do
+        [[ -e "$path" ]] && existing+=("$path")
+    done
+
+    tar -czf "$backup_file" "${existing[@]}" 2>/dev/null \
+        || log_warn "Sommige bestanden konden niet worden meegenomen in de back-up."
+
+    export BACKUP_FILE="$backup_file"
+    log_success "Back-up opgeslagen: $backup_file"
 }
 
 # Toont een menu en exporteert PROFILE (korte naam) en USG_PROFILE (usg-profielnaam).
