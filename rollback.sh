@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Zet de meest recente pre-hardening back-up terug.
+# Restore the most recent pre-hardening backup.
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -10,28 +10,28 @@ mkdir -p "$(dirname "$LOG_FILE")"
 
 require_root
 
-# Zoek meest recente back-up
+# Find most recent backup
 latest=$(ls -t "$BACKUP_DIR"/pre-hardening-*.tar.gz 2>/dev/null | head -1)
 if [[ -z "$latest" ]]; then
-    die "Geen back-up gevonden in $BACKUP_DIR. Niets om terug te zetten."
+    die "No backup found in $BACKUP_DIR. Nothing to restore."
 fi
 
 echo
-log_warn "Dit zet systeemconfiguratie terug uit de volgende back-up:"
+log_warn "This will restore system configuration from the following backup:"
 log_warn "  $latest"
-log_warn "Gewijzigde configuraties worden overschreven."
+log_warn "Modified configuration files will be overwritten."
 echo
 
-read -rp "Weet je het zeker? [j/N]: " confirm
-[[ "$confirm" =~ ^[jJ]$ ]] || { log_info "Afgebroken. Geen wijzigingen aangebracht."; exit 0; }
+read -rp "Are you sure? [y/N]: " confirm
+[[ "$confirm" =~ ^[yY]$ ]] || { log_info "Aborted. No changes made."; exit 0; }
 
-echo "=== Rollback gestart: $(date) ===" >> "$LOG_FILE"
-log_info "Terugzetten van: $latest"
+echo "=== Rollback started: $(date) ===" >> "$LOG_FILE"
+log_info "Restoring from: $latest"
 
 tar -xzf "$latest" -C / 2>/dev/null \
-    || log_warn "Sommige bestanden konden niet worden teruggezet."
+    || log_warn "Some files could not be restored."
 
-log_success "Rollback voltooid."
+log_success "Rollback complete."
 echo
-echo "Herstart het systeem om de herstelde configuratie te activeren:"
+echo "Restart the system to activate the restored configuration:"
 echo "  sudo reboot"
