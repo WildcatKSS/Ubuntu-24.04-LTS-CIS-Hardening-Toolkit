@@ -90,7 +90,7 @@ Een schone installatie van Ubuntu Server 24.04 LTS in lijn brengen met de aanbev
 
 ```bash
 git clone https://github.com/WildcatKSS/Ubuntu-24.04-CIS-Hardening.git
-cd ubuntu-24.04-cis-hardening
+cd Ubuntu-24.04-CIS-Hardening
 sudo ./harden.sh
 ```
 
