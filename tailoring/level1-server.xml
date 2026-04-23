@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Tailoring-bestand voor CIS Level 1 Server profiel.
+
+  Dit bestand is optioneel. Als het aanwezig is, laadt harden.sh/audit.sh het automatisch.
+  Gebruik het om specifieke CIS-controls in of uit te schakelen voor jouw omgeving.
+
+  Genereer een volledig aangepast startpunt met:
+    sudo usg generate-tailoring cis_level1_server tailoring/level1-server.xml
+
+  Daarna kun je in de GUI specifieke rules deactiveren en het bestand opslaan.
+
+  Handmatige aanpassing:
+  - Voeg <xccdf-1.2:select> elementen toe in het Profile-blok hieronder.
+  - selected="false" schakelt een control uit.
+  - selected="true"  schakelt een control in (standaard al actief in het basisprofiel).
+
+  Zoek rule-ID's op via: sudo usg audit cis_level1_server 2>&1 | grep "Rule"
+  of in de SCAP-benchmark: /usr/share/ubuntu-scap-security-guides/current/benchmarks/
+-->
+<xccdf-1.2:Tailoring
+    xmlns:xccdf-1.2="http://checklists.nist.gov/xccdf/1.2"
+    id="xccdf_tailoring_level1_server">
+
+  <xccdf-1.2:benchmark
+      href="/usr/share/ubuntu-scap-security-guides/current/benchmarks/cis-ubuntu24-level1-server.xml"/>
+
+  <xccdf-1.2:version time="2026-01-01T00:00:00" update=""/>
+
+  <xccdf-1.2:Profile
+      id="xccdf_tailoring_profile_level1_server"
+      extends="xccdf_org.ssgproject.content_profile_cis_level1_server">
+
+    <xccdf-1.2:title>Aangepast CIS Level 1 Server</xccdf-1.2:title>
+    <xccdf-1.2:description>
+      Lokale aanpassingen op het CIS Level 1 Server basisprofiel.
+      Voeg hieronder select-elementen toe om specifieke controls aan of uit te zetten.
+    </xccdf-1.2:description>
+
+    <!--
+    Voorbeelden:
+
+    Schakel een control uit (bijv. als je een andere SSH-poort gebruikt):
+    <xccdf-1.2:select idref="xccdf_org.ssgproject.content_rule_sshd_set_loglevel_verbose" selected="false"/>
+
+    Schakel een control expliciet in:
+    <xccdf-1.2:select idref="xccdf_org.ssgproject.content_rule_package_aide_installed" selected="true"/>
+    -->
+
+  </xccdf-1.2:Profile>
+
+</xccdf-1.2:Tailoring>

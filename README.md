@@ -1,118 +1,41 @@
 # Ubuntu 24.04 LTS CIS Hardening Toolkit
 
-![Status](https://img.shields.io/badge/status-pre--alpha-orange)
+![Status](https://img.shields.io/badge/status-beta-blue)
 ![Licentie](https://img.shields.io/badge/licentie-MIT-blue)
 ![Benchmark](https://img.shields.io/badge/CIS%20Benchmark-Ubuntu%2024.04%20v1.0.0-green)
+![Backend](https://img.shields.io/badge/backend-Ubuntu%20Security%20Guide%20(USG)-orange)
 
-Een geplande toolkit van Bash-scripts voor het hardenen van een schone Ubuntu 24.04 LTS Server installatie op basis van de **CIS Ubuntu Linux 24.04 LTS Benchmark v1.0.0**. Het hoofdscript zal tijdens het uitvoeren vragen welk CIS-profiel (Level 1 of Level 2 Server) je wilt toepassen.
+Een dunne Bash-wrapper rond **Ubuntu Security Guide (USG)** voor het hardenen en auditeren van Ubuntu 24.04 LTS Server op basis van de CIS Ubuntu Linux 24.04 LTS Benchmark v1.0.0.
 
-> ⚠️ **Disclaimer:** Deze toolkit zal diepgaand systeemconfiguratie wijzigen. Gebruik uitsluitend op verse installaties of in een testomgeving voordat je hem op productie loslaat. Maak altijd een snapshot/backup. De auteur is niet verantwoordelijk voor verlies van toegang of functionaliteit.
->
-> **Let op:** Er bestaat momenteel nog geen uitvoerbare code. Dit document beschrijft de beoogde werking en dient als architectuurspecificatie.
+> **Waarom een wrapper en niet zelf implementeren?**
+> USG is Canonicals officiële tool voor CIS-compliance op Ubuntu. Het bevat honderden nauwkeurig geïmplementeerde en geteste controls. Zelf implementeren zou het wiel opnieuw uitvinden — foutgevoeliger, minder onderhoudbaar, en altijd achter op updates. Deze toolkit biedt een eenvoudige interface bovenop USG, plus ondersteuning voor organisatie-specifieke tailoring.
 
------
+> ⚠️ **Disclaimer:** Hardening wijzigt diepgaand de systeemconfiguratie. Gebruik uitsluitend op verse installaties of in een testomgeving. Maak altijd een snapshot vóór uitvoering. De auteur is niet verantwoordelijk voor verlies van toegang of functionaliteit.
 
-## 📊 Project Status
+---
 
-> Dit project bevindt zich in de conceptfase. Er bestaat momenteel geen uitvoerbare code. Dit README-bestand dient als architectuurontwerp en startpunt voor de implementatie.
+## Vereisten
 
-| Fase | Status |
+| Vereiste | Details |
 |---|---|
-| Architectuurontwerp | Gereed |
-| Eerste implementatie (v0.1) | Niet gestart |
-| Beoogde eerste release | Onbekend |
+| OS | Ubuntu Server 24.04 LTS (Noble Numbat), x86_64 |
+| Rechten | Root of sudo |
+| Ubuntu Pro | Gratis tot 5 apparaten — [ubuntu.com/pro](https://ubuntu.com/pro) |
+| USG | Wordt automatisch geïnstalleerd als Ubuntu Pro actief is |
 
-Bijdragen aan de architectuur en planning zijn in deze fase het meest waardevol. Zie de sectie [Bijdragen](#-bijdragen) voor meer informatie.
+### Ubuntu Pro activeren (eenmalig)
 
------
-
-## 📋 Projectdoel
-
-Een schone installatie van Ubuntu Server 24.04 LTS in lijn brengen met de aanbevelingen van de CIS Benchmark, zonder afhankelijk te zijn van commerciële tooling (zoals Ubuntu Pro / USG). De toolkit wordt modulair, idempotent en leesbaar, zodat iedere wijziging traceerbaar en omkeerbaar is.
-
-### Waarom bash en niet Ansible?
-
-- Nul externe afhankelijkheden buiten een standaard Ubuntu installatie
-- Direct op een verse host uitvoerbaar door het script lokaal te klonen en te inspecteren vóór uitvoering
-- Laagdrempelig voor beginnende sysadmins om de CIS-controls te leren begrijpen
-- Geen control node of SSH-infrastructuur nodig
-
------
-
-## 🎯 Scope
-
-|Item         |Waarde                                                    |
-|-------------|----------------------------------------------------------|
-|Doel-OS      |Ubuntu Server 24.04 LTS (Noble Numbat)                    |
-|Architectuur |x86_64                                                    |
-|Benchmark    |CIS Ubuntu Linux 24.04 LTS v1.0.0                         |
-|Profielen    |Level 1 Server en Level 2 Server (runtime keuze)          |
-|Niet in scope|Workstation-profielen, desktop-varianten, container-images|
-
------
-
-## ✨ Geplande features
-
-| Feature | Status |
-|---|---|
-| Interactieve profielkeuze (L1 Server / L2 Server) bij het starten | Gepland |
-| Modulaire opbouw per CIS-sectie (1 t/m 7) | Gepland |
-| Pre-flight check: OS-versie, root-rechten, netwerktoegang, schijfruimte | Gepland |
-| Automatische back-up van gewijzigde configs naar `/var/backups/cis-hardening/<timestamp>/` | Gepland |
-| Dry-run modus (`--dry-run`) die alleen rapporteert wat er gewijzigd zou worden | Gepland |
-| Logging van elke actie naar `/var/log/cis-hardening.log` | Gepland |
-| Rollback-script dat de laatste back-up terugzet | Gepland |
-| Audit-only modus die compliance rapporteert zonder te wijzigen | Gepland |
-| Kleurgecodeerde output (PASS / FAIL / SKIP / CHANGED) | Gepland |
-
------
-
-## 📁 Geplande repo-structuur
-
-> De onderstaande structuur beschrijft de beoogde mappenindeling. Op dit moment bevat de repository alleen dit README-bestand.
-
-```
-.
-├── README.md
-├── LICENSE
-├── harden.sh                  # Hoofd-entrypoint (interactief menu)
-├── rollback.sh                # Zet laatste back-up terug
-├── lib/
-│   ├── common.sh              # Helpers: logging, back-up, checks
-│   ├── preflight.sh           # OS/versie/rechten verificatie
-│   └── colors.sh              # Output-opmaak
-├── modules/
-│   ├── 01-initial-setup/      # Filesystems, updates, bootloader, AppArmor
-│   ├── 02-services/           # Onnodige services uitschakelen
-│   ├── 03-network/            # Kernel params, firewall (ufw/nftables)
-│   ├── 04-logging-auditing/   # auditd, rsyslog, journald
-│   ├── 05-access/             # SSH, PAM, sudo, password policies
-│   ├── 06-system-maintenance/ # Bestandsrechten, user/group integriteit
-│   └── 07-misc/               # Overige controls
-├── config/
-│   ├── profile-l1-server.conf # Welke controls draaien voor L1
-│   └── profile-l2-server.conf # Welke controls draaien voor L2
-├── docs/
-│   ├── CONTROLS.md            # Overzicht geïmplementeerde controls + CIS-ID
-│   ├── EXCEPTIONS.md          # Bewust overgeslagen items met motivatie
-│   └── TESTING.md             # Testaanpak en test-VM setup
-└── tests/
-    └── vagrant/               # Vagrantfile voor test-VM
+```bash
+sudo pro attach <jouw-token>   # token ophalen op ubuntu.com/pro
+sudo pro enable usg
+sudo apt install usg
 ```
 
------
+---
 
-## 🚀 Beoogd gebruik
+## Gebruik
 
-> De scripts bestaan nog niet. De onderstaande instructies beschrijven de beoogde interface zodra v0.1 beschikbaar is.
-
-### Vereisten
-
-- Verse installatie van Ubuntu Server 24.04 LTS
-- Root-rechten of een sudo-user
-- Ten minste 500 MB vrije schijfruimte in `/var`
-
-### Installeren en uitvoeren
+### Hardening toepassen
 
 ```bash
 git clone https://github.com/WildcatKSS/Ubuntu-24.04-LTS-CIS-Hardening-Toolkit.git
@@ -120,80 +43,103 @@ cd Ubuntu-24.04-LTS-CIS-Hardening-Toolkit
 sudo ./harden.sh
 ```
 
-> **Veiligheid:** Inspecteer het script altijd vóór uitvoering. Voer nooit ongecontroleerde scripts als root uit.
-
-Je krijgt een menu:
+Het script vraagt welk CIS-profiel je wilt toepassen:
 
 ```
-Selecteer CIS profiel:
-  1) Level 1 Server  (aanbevolen baseline)
-  2) Level 2 Server  (strenger, mogelijk impact op functionaliteit)
-  3) Audit only      (geen wijzigingen)
+Selecteer CIS-profiel:
+  1) Level 1 Server  — aanbevolen baseline
+  2) Level 2 Server  — strenger, mogelijk impact op functionaliteit
   q) Afsluiten
 ```
 
-### Dry-run
+Na voltooiing: `sudo reboot`
 
-De `--dry-run` vlag werkt op elke modus en rapporteert alleen wat er gewijzigd zou worden:
-
-```bash
-sudo ./harden.sh --dry-run
-```
-
-### Rollback
+### Compliance auditeren (zonder wijzigingen)
 
 ```bash
-sudo ./rollback.sh
+sudo ./audit.sh
 ```
 
------
+Het HTML-rapport wordt opgeslagen in `/var/log/cis-audit/` en `/var/lib/usg/usg-report.html`.
 
-## 🗺️ Roadmap
+---
 
-> We bevinden ons momenteel vóór v0.1 — er bestaat nog geen projectstructuur of uitvoerbare code.
+## Profielen aanpassen (tailoring)
 
-- [ ] v0.1 – Projectstructuur, preflight-checks, logging-framework ← *huidige fase*
-- [ ] v0.2 – Sectie 1 (Initial Setup)
-- [ ] v0.3 – Sectie 2 (Services) + Sectie 3 (Network)
-- [ ] v0.4 – Sectie 4 (Logging & Auditing)
-- [ ] v0.5 – Sectie 5 (Access, Authentication, Authorization)
-- [ ] v0.6 – Sectie 6 + 7 (System Maintenance, Misc)
-- [ ] v0.7 – Audit-only modus + rapportage (JSON/HTML)
-- [ ] v0.8 – Rollback-mechanisme
-- [ ] v1.0 – Volledige dekking L1 & L2 Server, geautomatiseerde tests in CI
-- [ ] v1.1 – Ondersteuning voor Ubuntu 26.04 LTS zodra CIS-benchmark is gepubliceerd
+Standaard worden de profielen ongewijzigd toegepast. Voor omgeving-specifieke aanpassingen gebruik je tailoring-bestanden.
 
------
+### Optie 1 — Interactief via USG (aanbevolen)
 
-## 🧪 Testen
+```bash
+sudo usg generate-tailoring cis_level1_server tailoring/level1-server.xml
+```
 
-Elke release wordt getest tegen een verse Ubuntu 24.04 LTS VM (Vagrant/VirtualBox), gevolgd door een externe audit met een onafhankelijk tool zoals **Lynis** of het open-source **ansible-lockdown UBUNTU24-CIS-Audit** project, om de compliance-score te valideren.
+Dit opent een browser-gebaseerde GUI waarin je per control kunt kiezen of deze actief is.
 
-`docs/TESTING.md` wordt aangemaakt zodra de eerste implementatie beschikbaar is.
+### Optie 2 — Handmatig bewerken
 
------
+Bewerk `tailoring/level1-server.xml` of `tailoring/level2-server.xml` direct.
+Voeg `<xccdf-1.2:select>` elementen toe in het `Profile`-blok:
 
-## 🙏 Credits & Referenties
+```xml
+<!-- Control uitschakelen -->
+<xccdf-1.2:select idref="xccdf_org.ssgproject.content_rule_sshd_set_loglevel_verbose" selected="false"/>
+```
 
-- [CIS Ubuntu Linux 24.04 LTS Benchmark](https://www.cisecurity.org/benchmark/ubuntu_linux) – Center for Internet Security
-- [Ubuntu Security Guide (USG)](https://ubuntu.com/security/certifications/docs/usg) – Canonical
-- [ansible-lockdown/UBUNTU24-CIS](https://github.com/ansible-lockdown/UBUNTU24-CIS) – inspiratie voor modulaire opzet
+De tailoring-bestanden worden automatisch geladen als ze aanwezig zijn — geen configuratie nodig.
 
------
+---
 
-## 📜 Licentie
+## Projectstructuur
 
-MIT License — het `LICENSE`-bestand wordt toegevoegd bij de eerste commit met uitvoerbare code. CIS Benchmarks zijn eigendom van het Center for Internet Security; deze repo bevat geen CIS-benchmarkteksten, alleen implementaties van publiekelijk beschreven controls.
+```
+.
+├── harden.sh                  # Hardening via USG fix
+├── audit.sh                   # Compliance-audit via USG audit
+├── lib/
+│   └── common.sh              # Gedeelde functies (logging, preflight, profielkeuze)
+└── tailoring/
+    ├── level1-server.xml      # Optionele aanpassingen op L1 profiel
+    └── level2-server.xml      # Optionele aanpassingen op L2 profiel
+```
 
------
+---
 
-## 🤝 Bijdragen
+## Scope
 
-Pull requests zijn welkom. Open eerst een issue voor grotere wijzigingen.
+| Item | Waarde |
+|---|---|
+| Doel-OS | Ubuntu Server 24.04 LTS |
+| Architectuur | x86_64 |
+| Benchmark | CIS Ubuntu Linux 24.04 LTS v1.0.0 |
+| Profielen | Level 1 Server, Level 2 Server |
+| Niet in scope | Workstation-profielen, container-images |
 
-**In de huidige conceptfase** zijn bijdragen aan de architectuur en planning het meest waardevol:
-- Feedback op de geplande structuur of module-indeling
-- Ontbrekende CIS-controls aanwijzen
-- Use cases of edge cases beschrijven
+---
 
-**Zodra er code is:** Zorg dat nieuwe controls de CIS-ID vermelden en een unit-test bevatten.
+## Hoe USG controls uitvoert
+
+USG leest de SCAP-benchmark bestanden in `/usr/share/ubuntu-scap-security-guides/current/benchmarks/` en past de controls toe via het onderliggende OpenSCAP-framework. Bij `usg fix` worden systeeminstellingen gewijzigd; bij `usg audit` wordt alleen gerapporteerd.
+
+Controls zoeken:
+
+```bash
+# Welke rules zijn beschikbaar in een profiel?
+usg audit cis_level1_server 2>&1 | grep "Rule"
+
+# Benchmark bestanden bekijken
+ls /usr/share/ubuntu-scap-security-guides/current/benchmarks/
+```
+
+---
+
+## Credits & Referenties
+
+- [Ubuntu Security Guide (USG)](https://ubuntu.com/security/certifications/docs/usg) — Canonical
+- [CIS Ubuntu Linux 24.04 LTS Benchmark](https://www.cisecurity.org/benchmark/ubuntu_linux) — Center for Internet Security
+
+---
+
+## Licentie
+
+MIT — zie `LICENSE`. CIS Benchmarks zijn eigendom van het Center for Internet Security; deze repository bevat geen benchmarkteksten.
