@@ -43,6 +43,12 @@ _resolve_level() {
         printf '%s' "$in"
         return 0
     fi
+    # "success" is not a syslog level; alias it to notice so that
+    # `log success "..."` call sites resolve cleanly under `set -e`.
+    if [[ "$in" == "success" ]]; then
+        printf '%s' 5
+        return 0
+    fi
     local i
     for i in "${!LOG_NAMES[@]}"; do
         if [[ "${LOG_NAMES[$i]}" == "$in" ]]; then
