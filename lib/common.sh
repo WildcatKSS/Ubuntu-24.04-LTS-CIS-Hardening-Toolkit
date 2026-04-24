@@ -396,6 +396,27 @@ build_usg_args() {
 
     if [[ -f "$tailoring_file" ]]; then
         log info "Tailoring file found: $tailoring_file"
+
+        # usg/OpenSCAP only trusts --tailoring-file when the file and its
+        # parent directory are owned by root or the current user. After a
+        # clone as a non-root user, both sit on uid != 0 while we run as
+        # root via sudo, which triggers a warning. Normalize ownership and
+        # mode so the trust check passes. Safe because require_root() has
+        # already asserted EUID 0.
+        if [[ "$(stat -c '%u' "$tailoring_file")" != "0" ]]; then
+            log info "Normalizing ownership of $tailoring_file to root:root"
+            chown root:root "$tailoring_file" \
+                || log warning "chown failed on $tailoring_file"
+            chmod 0644 "$tailoring_file" || true
+        fi
+        if [[ -d "$tailoring_dir" \
+              && "$(stat -c '%u' "$tailoring_dir")" != "0" ]]; then
+            log info "Normalizing ownership of $tailoring_dir to root:root"
+            chown root:root "$tailoring_dir" \
+                || log warning "chown failed on $tailoring_dir"
+            chmod 0755 "$tailoring_dir" || true
+        fi
+
         USG_ARGS=("--tailoring-file" "$tailoring_file")
     fi
 
