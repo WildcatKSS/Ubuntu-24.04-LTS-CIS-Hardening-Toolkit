@@ -18,15 +18,6 @@ A Bash wrapper around **Ubuntu Security Guide (USG)** for hardening and auditing
 | OS | Ubuntu Server 24.04 LTS (Noble Numbat), x86_64 |
 | Privileges | Root or sudo |
 | Ubuntu Pro | Free for up to 5 machines — [ubuntu.com/pro](https://ubuntu.com/pro) |
-| USG | Installed automatically when Ubuntu Pro is active |
-
-### Ubuntu Pro (one-time setup)
-
-The script handles Ubuntu Pro setup automatically. During the first run it will:
-1. Install `ubuntu-advantage-tools` if missing
-2. Prompt you for your Ubuntu Pro token and run `pro attach`
-3. Enable the USG service via `pro enable usg`
-4. Install the `usg` package
 
 Get your free token at [ubuntu.com/pro](https://ubuntu.com/pro) before running the script.
 
