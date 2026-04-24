@@ -48,13 +48,6 @@ The script asks every question **up front** so the rest of the run is fully unat
 2. Ubuntu Pro token — only prompted if the machine is not yet attached
 3. Whether to automatically reboot when hardening finishes
 
-```
-Select CIS profile:
-  1) Level 1 Server  — recommended baseline
-  2) Level 2 Server  — stricter, may impact functionality
-  q) Quit
-```
-
 After you answer these, the script runs end-to-end without further input: it updates Ubuntu, sets up Ubuntu Pro + USG, backs up system configuration to `/var/backups/cis-hardening/`, applies the CIS profile, and reboots (or exits) based on your earlier answer.
 
 ### Roll back
