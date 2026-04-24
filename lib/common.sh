@@ -385,7 +385,21 @@ select_profile() {
     export PROFILE USG_PROFILE
 }
 
-# Builds the USG argument list, including a tailoring file when present.
+# Returns 0 when the tailoring file contains at least one <select> or
+# <set-value> element outside of XML comments — i.e. a real customization
+# from the user. Returns 1 for the shipped skeleton (only commented examples).
+has_tailoring_customizations() {
+    local file="$1"
+    [[ -f "$file" ]] || return 1
+    perl -0777 -ne '
+        s/<!--.*?-->//gs;
+        exit(/<(?:[A-Za-z_][\w.-]*:)?(?:select|set-value)\b/s ? 0 : 1)
+    ' "$file" 2>/dev/null
+}
+
+# Builds the USG argument list, including a tailoring file only when the
+# user has actually customized it. An unmodified skeleton is skipped so
+# audits/harden runs use the plain base profile.
 # Usage: build_usg_args "$SCRIPT_DIR/tailoring"
 # Result is stored in the global array USG_ARGS.
 build_usg_args() {
@@ -394,32 +408,38 @@ build_usg_args() {
 
     USG_ARGS=("$USG_PROFILE")
 
-    if [[ -f "$tailoring_file" ]]; then
-        log info "Tailoring file found: $tailoring_file"
-
-        # usg/OpenSCAP walks every parent directory of --tailoring-file and
-        # refuses to trust the file unless each one is owned by root or the
-        # current user. When the repo lives under a user's home (or any path
-        # with a non-root ancestor), that check fails. Rather than chown the
-        # user's directories, stage the tailoring file in a root-owned temp
-        # directory whose ancestors (/tmp, /) are already root-owned.
-        local staged_dir staged_file
-        staged_dir="$(mktemp -d /tmp/cis-hardening-tailoring.XXXXXX)" \
-            || die "Failed to create temp directory for tailoring file."
-        chown root:root "$staged_dir"
-        chmod 0755 "$staged_dir"
-        staged_file="$staged_dir/${PROFILE}.xml"
-        cp -- "$tailoring_file" "$staged_file" \
-            || die "Failed to stage tailoring file in $staged_dir."
-        chown root:root "$staged_file"
-        chmod 0644 "$staged_file"
-
-        # Clean up the staged copy on exit so /tmp doesn't fill up over time.
-        # shellcheck disable=SC2064  # intentional early expansion of $staged_dir
-        trap "rm -rf -- '$staged_dir'" EXIT
-
-        USG_ARGS=("--tailoring-file" "$staged_file")
+    if [[ ! -f "$tailoring_file" ]]; then
+        return 0
     fi
 
+    if ! has_tailoring_customizations "$tailoring_file"; then
+        log info "Tailoring file is unmodified — using base profile: $USG_PROFILE"
+        return 0
+    fi
+
+    log info "Tailoring customizations found: $tailoring_file"
+
+    # usg/OpenSCAP walks every parent directory of --tailoring-file and
+    # refuses to trust the file unless each one is owned by root or the
+    # current user. When the repo lives under a user's home (or any path
+    # with a non-root ancestor), that check fails. Rather than chown the
+    # user's directories, stage the tailoring file in a root-owned temp
+    # directory whose ancestors (/tmp, /) are already root-owned.
+    local staged_dir staged_file
+    staged_dir="$(mktemp -d /tmp/cis-hardening-tailoring.XXXXXX)" \
+        || die "Failed to create temp directory for tailoring file."
+    chown root:root "$staged_dir"
+    chmod 0755 "$staged_dir"
+    staged_file="$staged_dir/${PROFILE}.xml"
+    cp -- "$tailoring_file" "$staged_file" \
+        || die "Failed to stage tailoring file in $staged_dir."
+    chown root:root "$staged_file"
+    chmod 0644 "$staged_file"
+
+    # Clean up the staged copy on exit so /tmp doesn't fill up over time.
+    # shellcheck disable=SC2064  # intentional early expansion of $staged_dir
+    trap "rm -rf -- '$staged_dir'" EXIT
+
+    USG_ARGS=("--tailoring-file" "$staged_file")
     export USG_ARGS
 }
