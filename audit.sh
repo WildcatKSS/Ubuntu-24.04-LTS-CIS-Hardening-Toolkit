@@ -19,6 +19,7 @@ check_ubuntu_version
 # All interactive prompts live here — nothing after this line asks questions.
 collect_answers audit
 require_usg
+ensure_packages w3m
 build_usg_args "$SCRIPT_DIR/tailoring"
 
 log info "Auditing profile: $USG_PROFILE"
