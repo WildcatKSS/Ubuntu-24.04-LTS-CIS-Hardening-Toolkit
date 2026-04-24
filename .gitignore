@@ -1,0 +1,26 @@
+# Editor / OS junk
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Runtime output accidentally dropped in the repo dir
+# (scripts write to /var/log, /var/backups, /var/lib/usg — these patterns
+# catch copies that end up here during testing or local runs.)
+*.log
+report-*.html
+pre-hardening-*.tar.gz
+usg-report*.html
+usg-results*.xml
+
+# Staged tailoring copies (scripts use /tmp, but just in case)
+cis-hardening-tailoring.*
+
+# Credentials / tokens — should never be committed
+*.token
+.env
+.env.*
+secrets*
