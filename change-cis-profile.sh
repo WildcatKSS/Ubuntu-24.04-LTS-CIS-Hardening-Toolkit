@@ -11,10 +11,11 @@ init_logging "Tailoring"
 
 require_root
 check_ubuntu_version
-require_usg
 
-# Profile selection up front.
+# Ask every question up front. collect_answers also prompts for an Ubuntu
+# Pro token when USG is not yet installed — so require_usg can run unattended.
 collect_answers tailoring
+require_usg
 
 TAILORING_FILE="$SCRIPT_DIR/tailoring/${PROFILE}.xml"
 
