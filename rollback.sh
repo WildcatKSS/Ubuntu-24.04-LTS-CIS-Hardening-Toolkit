@@ -16,9 +16,17 @@ if [[ -z "$latest" ]]; then
     die "No backup found in $BACKUP_DIR. Nothing to restore."
 fi
 
+tar -tzf "$latest" >/dev/null 2>&1 \
+    || die "Backup $latest failed integrity check — refusing to extract."
+
+entry_count=$(tar -tzf "$latest" | wc -l)
+backup_size=$(du -h "$latest" | cut -f1)
+
 echo
 log warning "This will restore system configuration from the following backup:"
-log warning "  $latest"
+log warning "  File    : $latest"
+log warning "  Size    : $backup_size"
+log warning "  Entries : $entry_count"
 log warning "Modified configuration files will be overwritten."
 echo
 
@@ -27,8 +35,8 @@ read -rp "Are you sure? [y/N]: " confirm
 
 log info "Restoring from: $latest"
 
-tar -xzf "$latest" -C / 2>/dev/null \
-    || log warning "Some files could not be restored."
+tar -xzf "$latest" -C / \
+    || die "Rollback failed while extracting $latest. System may be in a mixed state."
 
 log success "Rollback complete."
 log info "Restart the system to activate the restored configuration: sudo reboot"

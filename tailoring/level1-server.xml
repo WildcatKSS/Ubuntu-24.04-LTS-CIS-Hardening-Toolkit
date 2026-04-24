@@ -1,22 +1,22 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
-  Tailoring-bestand voor CIS Level 1 Server profiel.
+  Tailoring file for the CIS Level 1 Server profile.
 
-  Dit bestand is optioneel. Als het aanwezig is, laadt harden.sh/audit.sh het automatisch.
-  Gebruik het om specifieke CIS-controls in of uit te schakelen voor jouw omgeving.
+  This file is optional. When present, harden.sh/audit.sh load it automatically.
+  Use it to enable or disable specific CIS controls for your environment.
 
-  Genereer een volledig aangepast startpunt met:
+  Generate a fully customised starting point with:
     sudo usg generate-tailoring cis_level1_server tailoring/level1-server.xml
 
-  Daarna kun je in de GUI specifieke rules deactiveren en het bestand opslaan.
+  You can then deactivate specific rules in the GUI and save the file.
 
-  Handmatige aanpassing:
-  - Voeg <xccdf-1.2:select> elementen toe in het Profile-blok hieronder.
-  - selected="false" schakelt een control uit.
-  - selected="true"  schakelt een control in (standaard al actief in het basisprofiel).
+  Manual editing:
+  - Add <xccdf-1.2:select> elements inside the Profile block below.
+  - selected="false" disables a control.
+  - selected="true"  enables a control (already active in the base profile).
 
-  Zoek rule-ID's op via: sudo usg audit cis_level1_server 2>&1 | grep "Rule"
-  of in de SCAP-benchmark: /usr/share/ubuntu-scap-security-guides/current/benchmarks/
+  Look up rule IDs via: sudo usg audit cis_level1_server 2>&1 | grep "Rule"
+  or in the SCAP benchmark: /usr/share/ubuntu-scap-security-guides/current/benchmarks/
 -->
 <xccdf-1.2:Tailoring
     xmlns:xccdf-1.2="http://checklists.nist.gov/xccdf/1.2"
@@ -31,19 +31,19 @@
       id="xccdf_tailoring_profile_level1_server"
       extends="xccdf_org.ssgproject.content_profile_cis_level1_server">
 
-    <xccdf-1.2:title>Aangepast CIS Level 1 Server</xccdf-1.2:title>
+    <xccdf-1.2:title>Customised CIS Level 1 Server</xccdf-1.2:title>
     <xccdf-1.2:description>
-      Lokale aanpassingen op het CIS Level 1 Server basisprofiel.
-      Voeg hieronder select-elementen toe om specifieke controls aan of uit te zetten.
+      Local adjustments to the CIS Level 1 Server base profile.
+      Add select elements below to enable or disable specific controls.
     </xccdf-1.2:description>
 
     <!--
-    Voorbeelden:
+    Examples:
 
-    Schakel een control uit (bijv. als je een andere SSH-poort gebruikt):
+    Disable a control (e.g. when you use a non-default SSH port):
     <xccdf-1.2:select idref="xccdf_org.ssgproject.content_rule_sshd_set_loglevel_verbose" selected="false"/>
 
-    Schakel een control expliciet in:
+    Explicitly enable a control:
     <xccdf-1.2:select idref="xccdf_org.ssgproject.content_rule_package_aide_installed" selected="true"/>
     -->
 

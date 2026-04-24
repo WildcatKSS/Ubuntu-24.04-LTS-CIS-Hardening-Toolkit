@@ -110,6 +110,8 @@ init_logging() {
     local label="${1:-Session}"
     mkdir -p "$(dirname "$LOG_FILE")"
     touch "$LOG_FILE" 2>/dev/null || true
+    # Log may contain apt output, paths and error messages — restrict to root.
+    chmod 0600 "$LOG_FILE" 2>/dev/null || true
     {
         printf '\n=== %s started: %s (pid=%s) ===\n' \
             "$label" "$(date '+%Y-%m-%d %H:%M:%S')" "$$"
@@ -128,7 +130,11 @@ check_ubuntu_version() {
     local version
     version=$(lsb_release -rs 2>/dev/null) || die "Cannot determine Ubuntu version (lsb_release missing)."
     if [[ "$version" != "$REQUIRED_UBUNTU_VERSION" ]]; then
-        log warning "Expected Ubuntu $REQUIRED_UBUNTU_VERSION, found: $version. Proceeding at your own risk."
+        if [[ "${ALLOW_UNSUPPORTED_UBUNTU:-0}" == "1" ]]; then
+            log warning "Expected Ubuntu $REQUIRED_UBUNTU_VERSION, found: $version. ALLOW_UNSUPPORTED_UBUNTU=1 set — proceeding at your own risk."
+            return 0
+        fi
+        die "Expected Ubuntu $REQUIRED_UBUNTU_VERSION, found: $version. Re-run with ALLOW_UNSUPPORTED_UBUNTU=1 to override."
     fi
 }
 
@@ -166,6 +172,10 @@ collect_answers() {
     export PROFILE USG_PROFILE
 
     # ── Ubuntu Pro token (only if hardening and not yet attached) ───────────
+    # PRO_TOKEN is deliberately NOT exported: keeping it in the current
+    # shell's variable scope only means it is not inherited by unrelated
+    # child processes (apt, pro, usg) via /proc/<pid>/environ. The token is
+    # passed explicitly to setup_ubuntu_pro().
     PRO_TOKEN=""
     if [[ "$mode" == "harden" ]]; then
         if ! pro_is_attached; then
@@ -174,10 +184,11 @@ collect_answers() {
             echo "USG requires Ubuntu Pro (free for up to 5 machines)."
             echo "Get your token at: https://ubuntu.com/pro"
             echo
-            read -rp "Enter your Ubuntu Pro token: " PRO_TOKEN
+            # read -rs suppresses terminal echo so the token is not visible.
+            read -rsp "Enter your Ubuntu Pro token: " PRO_TOKEN
+            echo
             [[ -n "$PRO_TOKEN" ]] || die "No Ubuntu Pro token provided. Aborting."
         fi
-        export PRO_TOKEN
     fi
 
     # ── Reboot preference (hardening only) ──────────────────────────────────
@@ -247,8 +258,10 @@ pro_is_attached() {
 }
 
 # Ensures Ubuntu Pro is attached and the USG service is enabled.
-# Uses the pre-collected $PRO_TOKEN from collect_answers() — does NOT prompt.
+# Usage: setup_ubuntu_pro "$PRO_TOKEN"
+# The token is passed as an argument so it never has to be exported.
 setup_ubuntu_pro() {
+    local token="${1:-}"
     echo
     log info "Ubuntu Pro & USG setup"
 
@@ -266,11 +279,11 @@ setup_ubuntu_pro() {
     if pro_is_attached; then
         log info "[2/3] Ubuntu Pro is already attached."
     else
-        [[ -n "${PRO_TOKEN:-}" ]] \
+        [[ -n "$token" ]] \
             || die "Ubuntu Pro not attached and no token collected. Re-run and provide a token."
         log info "[2/3] Attaching Ubuntu Pro with collected token..."
         local attach_out
-        if attach_out="$(pro attach "$PRO_TOKEN" 2>&1)"; then
+        if attach_out="$(pro attach "$token" 2>&1)"; then
             printf '%s\n' "$attach_out"
             log success "[2/3] Ubuntu Pro attached successfully."
         elif grep -qi "already attached" <<<"$attach_out"; then
@@ -298,14 +311,16 @@ setup_ubuntu_pro() {
 
 # Checks whether the usg package is installed; installs it if not.
 # Calls setup_ubuntu_pro() when USG is not yet present.
+# Usage: require_usg "$PRO_TOKEN"
 require_usg() {
+    local token="${1:-}"
     if command -v usg &>/dev/null; then
         log info "USG found: $(usg --version 2>/dev/null || echo 'version unknown')"
         return
     fi
 
     log info "USG not found — starting setup..."
-    setup_ubuntu_pro
+    setup_ubuntu_pro "$token"
 
     log info "Installing USG package..."
     apt-get install -y usg || die "Failed to install the usg package."
@@ -351,43 +366,35 @@ create_backup() {
         [[ -e "$path" ]] && existing+=("$path")
     done
 
-    tar -czf "$backup_file" "${existing[@]}" 2>/dev/null \
-        || log warning "Some files could not be included in the backup."
+    [[ ${#existing[@]} -gt 0 ]] \
+        || die "No configuration paths found to back up — refusing to continue."
+
+    # A failed or incomplete backup is fatal: without a trustworthy rollback
+    # target, running `usg fix` afterwards would leave the system in an
+    # unrecoverable state.
+    tar -czf "$backup_file" "${existing[@]}" \
+        || die "Backup failed while writing $backup_file."
+
+    [[ -s "$backup_file" ]] \
+        || die "Backup file $backup_file is empty."
+
+    tar -tzf "$backup_file" >/dev/null 2>&1 \
+        || die "Backup file $backup_file failed integrity check."
+
+    chmod 0600 "$backup_file" 2>/dev/null || true
 
     export BACKUP_FILE="$backup_file"
     log success "Backup saved: $backup_file"
 }
 
-# Displays the profile menu if $PROFILE is not already set by collect_answers().
-# Exports PROFILE (short name) and USG_PROFILE (usg profile name).
-select_profile() {
-    if [[ -n "${PROFILE:-}" && -n "${USG_PROFILE:-}" ]]; then
-        return 0
-    fi
-
-    echo
-    echo "Select CIS profile:"
-    echo "  1) Level 1 Server  — recommended baseline"
-    echo "  2) Level 2 Server  — stricter, may impact functionality"
-    echo "  q) Quit"
-    echo
-
-    local choice
-    read -rp "Choice [1/2/q]: " choice
-
-    case "$choice" in
-        1) PROFILE="level1-server"; USG_PROFILE="cis_level1_server" ;;
-        2) PROFILE="level2-server"; USG_PROFILE="cis_level2_server" ;;
-        q|Q) log info "Aborted by user."; exit 0 ;;
-        *) die "Invalid choice: '$choice'" ;;
-    esac
-
-    export PROFILE USG_PROFILE
-}
-
 # Builds the USG argument list, including a tailoring file when present.
 # Usage: build_usg_args "$SCRIPT_DIR/tailoring"
 # Result is stored in the global array USG_ARGS.
+#
+# NOTE: When a tailoring file is supplied, the base profile name is
+# deliberately dropped. Passing both `<profile>` and `--tailoring-file` to
+# `usg` triggers a "profile conflict" error (see commit 517dd5d). The profile
+# to apply is carried inside the tailoring XML via its `extends=` attribute.
 build_usg_args() {
     local tailoring_dir="$1"
     local tailoring_file="$tailoring_dir/${PROFILE}.xml"

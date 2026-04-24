@@ -1,17 +1,17 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
-  Tailoring-bestand voor CIS Level 2 Server profiel.
+  Tailoring file for the CIS Level 2 Server profile.
 
-  Dit bestand is optioneel. Als het aanwezig is, laadt harden.sh/audit.sh het automatisch.
+  This file is optional. When present, harden.sh/audit.sh load it automatically.
 
-  Level 2 is aanzienlijk strenger dan Level 1 en kan de functionaliteit van sommige
-  services beïnvloeden. Gebruik dit bestand om controls die conflicteren met jouw
-  specifieke omgeving selectief uit te schakelen.
+  Level 2 is significantly stricter than Level 1 and may affect the functionality
+  of some services. Use this file to selectively disable controls that conflict
+  with your specific environment.
 
-  Genereer een volledig interactief startpunt met:
+  Generate a fully interactive starting point with:
     sudo usg generate-tailoring cis_level2_server tailoring/level2-server.xml
 
-  Zoek rule-ID's op via: sudo usg audit cis_level2_server 2>&1 | grep "Rule"
+  Look up rule IDs via: sudo usg audit cis_level2_server 2>&1 | grep "Rule"
 -->
 <xccdf-1.2:Tailoring
     xmlns:xccdf-1.2="http://checklists.nist.gov/xccdf/1.2"
@@ -26,20 +26,20 @@
       id="xccdf_tailoring_profile_level2_server"
       extends="xccdf_org.ssgproject.content_profile_cis_level2_server">
 
-    <xccdf-1.2:title>Aangepast CIS Level 2 Server</xccdf-1.2:title>
+    <xccdf-1.2:title>Customised CIS Level 2 Server</xccdf-1.2:title>
     <xccdf-1.2:description>
-      Lokale aanpassingen op het CIS Level 2 Server basisprofiel.
-      Level 2 vereist zorgvuldige afweging per omgeving.
-      Voeg hieronder select-elementen toe om specifieke controls aan of uit te zetten.
+      Local adjustments to the CIS Level 2 Server base profile.
+      Level 2 requires careful evaluation per environment.
+      Add select elements below to enable or disable specific controls.
     </xccdf-1.2:description>
 
     <!--
-    Voorbeelden voor veelvoorkomende Level 2 uitzonderingen:
+    Examples of common Level 2 exceptions:
 
-    SELinux enforcing (als je AppArmor gebruikt i.p.v. SELinux):
+    SELinux enforcing (when you use AppArmor instead of SELinux):
     <xccdf-1.2:select idref="xccdf_org.ssgproject.content_rule_selinux_state" selected="false"/>
 
-    Tijdsynchronisatie via intern NTP-server (aanpassen i.p.v. uitschakelen):
+    Time synchronisation via an internal NTP server (adjust instead of disable):
     <xccdf-1.2:select idref="xccdf_org.ssgproject.content_rule_chronyd_server_directive" selected="false"/>
     -->
 

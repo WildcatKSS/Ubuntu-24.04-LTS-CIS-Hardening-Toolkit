@@ -1,0 +1,25 @@
+name: shellcheck
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  shellcheck:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install shellcheck
+        run: sudo apt-get update && sudo apt-get install -y shellcheck
+
+      - name: Syntax check (bash -n)
+        run: |
+          bash -n harden.sh
+          bash -n audit.sh
+          bash -n rollback.sh
+          bash -n change-cis-profile.sh
+          bash -n lib/common.sh
+
+      - name: shellcheck
+        run: shellcheck -x harden.sh audit.sh rollback.sh change-cis-profile.sh lib/common.sh

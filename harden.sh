@@ -16,13 +16,16 @@ check_ubuntu_version
 collect_answers harden
 
 system_update
-require_usg
+require_usg "${PRO_TOKEN:-}"
 create_backup
 build_usg_args "$SCRIPT_DIR/tailoring"
 
 log info "Profile: $USG_PROFILE"
 log info "Running USG fix..."
 
+# `set -euo pipefail` above guarantees that a non-zero `usg fix` exit aborts
+# the script here, so the success log and reboot below are only reached on a
+# clean hardening run.
 usg fix "${USG_ARGS[@]}"
 
 log success "Hardening complete. Backup saved at: $BACKUP_FILE"

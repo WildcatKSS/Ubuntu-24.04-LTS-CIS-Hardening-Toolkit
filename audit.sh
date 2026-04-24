@@ -22,9 +22,15 @@ build_usg_args "$SCRIPT_DIR/tailoring"
 
 log info "Auditing profile: $USG_PROFILE"
 
-# usg audit exits with code 1 on non-compliance; that is expected behaviour
+# usg audit exits with code 1 on non-compliance; that is expected behaviour.
+# A missing report, however, means the audit itself failed — surface that.
+readonly USG_REPORT="/var/lib/usg/usg-report.html"
 usg audit "${USG_ARGS[@]}" || true
 
-log info "HTML report saved at: /var/lib/usg/usg-report.html"
+[[ -s "$USG_REPORT" ]] \
+    || die "Audit did not produce a report at $USG_REPORT — usg audit likely failed."
+
+log info "HTML report saved at: $USG_REPORT"
 log info "Copy saved at: $REPORT_FILE"
-cp /var/lib/usg/usg-report.html "$REPORT_FILE" 2>/dev/null || true
+cp "$USG_REPORT" "$REPORT_FILE" \
+    || die "Failed to copy report to $REPORT_FILE."
