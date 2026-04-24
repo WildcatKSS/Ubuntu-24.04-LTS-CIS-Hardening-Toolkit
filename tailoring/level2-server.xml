@@ -13,36 +13,33 @@
 
   Zoek rule-ID's op via: sudo usg audit cis_level2_server 2>&1 | grep "Rule"
 -->
-<xccdf-1.2:Tailoring
-    xmlns:xccdf-1.2="http://checklists.nist.gov/xccdf/1.2"
-    id="xccdf_tailoring_level2_server">
+<Tailoring xmlns="http://checklists.nist.gov/xccdf/1.2"
+           id="xccdf_cis-hardening-toolkit_tailoring_level2_server">
 
-  <xccdf-1.2:benchmark
-      href="/usr/share/ubuntu-scap-security-guides/current/benchmarks/cis-ubuntu24-level2-server.xml"/>
+  <benchmark href="/usr/share/ubuntu-scap-security-guides/current/benchmarks/cis-ubuntu24-level2-server.xml"/>
 
-  <xccdf-1.2:version time="2026-01-01T00:00:00" update=""/>
+  <version time="2026-01-01T00:00:00">1</version>
 
-  <xccdf-1.2:Profile
-      id="xccdf_tailoring_profile_level2_server"
-      extends="xccdf_org.ssgproject.content_profile_cis_level2_server">
+  <Profile id="xccdf_org.ssgproject.content_profile_cis_level2_server_customized"
+           extends="xccdf_org.ssgproject.content_profile_cis_level2_server">
 
-    <xccdf-1.2:title>Aangepast CIS Level 2 Server</xccdf-1.2:title>
-    <xccdf-1.2:description>
+    <title xml:lang="en-US" override="true">Aangepast CIS Level 2 Server</title>
+    <description xml:lang="en-US" override="true">
       Lokale aanpassingen op het CIS Level 2 Server basisprofiel.
       Level 2 vereist zorgvuldige afweging per omgeving.
       Voeg hieronder select-elementen toe om specifieke controls aan of uit te zetten.
-    </xccdf-1.2:description>
+    </description>
 
     <!--
     Voorbeelden voor veelvoorkomende Level 2 uitzonderingen:
 
     SELinux enforcing (als je AppArmor gebruikt i.p.v. SELinux):
-    <xccdf-1.2:select idref="xccdf_org.ssgproject.content_rule_selinux_state" selected="false"/>
+    <select idref="xccdf_org.ssgproject.content_rule_selinux_state" selected="false"/>
 
     Tijdsynchronisatie via intern NTP-server (aanpassen i.p.v. uitschakelen):
-    <xccdf-1.2:select idref="xccdf_org.ssgproject.content_rule_chronyd_server_directive" selected="false"/>
+    <select idref="xccdf_org.ssgproject.content_rule_chronyd_server_directive" selected="false"/>
     -->
 
-  </xccdf-1.2:Profile>
+  </Profile>
 
-</xccdf-1.2:Tailoring>
+</Tailoring>
