@@ -8,7 +8,6 @@ source "$SCRIPT_DIR/lib/common.sh"
 
 readonly REPORT_DIR="/var/log/cis-audit"
 readonly REPORT_FILE="$REPORT_DIR/report-$(date +%Y%m%d-%H%M%S).html"
-readonly USG_REPORT="/var/lib/usg/usg-report.html"
 
 init_logging "Audit"
 mkdir -p "$REPORT_DIR"
@@ -24,18 +23,15 @@ build_usg_args "$SCRIPT_DIR/tailoring"
 
 log info "Auditing profile: $USG_PROFILE"
 
-# usg audit exits with code 1 on non-compliance; that is expected behaviour.
-usg audit "${USG_ARGS[@]}" || true
+# usg audit writes its default report to /var/lib/usg/usg-report-<DATE>.html;
+# steer it to our path with --html-file so we don't have to guess.
+# Exit code 1 means non-compliance (still produces a report) — don't abort on it.
+usg audit --html-file "$REPORT_FILE" "${USG_ARGS[@]}" || true
 
-if [[ -f "$USG_REPORT" ]]; then
-    if cp -- "$USG_REPORT" "$REPORT_FILE"; then
-        log info "HTML report saved at: $USG_REPORT"
-        log info "Copy saved at:        $REPORT_FILE"
-    else
-        log warning "USG report exists at $USG_REPORT but could not be copied to $REPORT_FILE."
-    fi
+if [[ -f "$REPORT_FILE" ]]; then
+    log info "HTML report saved at: $REPORT_FILE"
 else
-    log err "USG produced no report at $USG_REPORT — check the output above for errors."
+    log err "USG produced no report at $REPORT_FILE — check the output above for errors."
     exit 1
 fi
 
