@@ -165,20 +165,20 @@ collect_answers() {
     esac
     export PROFILE USG_PROFILE
 
-    # ── Ubuntu Pro token (only if hardening and not yet attached) ───────────
+    # ── Ubuntu Pro token ────────────────────────────────────────────────────
+    # Needed whenever USG is missing AND the host is not attached to Pro.
+    # Collected for both harden and audit modes so the rest runs unattended.
     PRO_TOKEN=""
-    if [[ "$mode" == "harden" ]]; then
-        if ! pro_is_attached; then
-            echo
-            echo "Ubuntu Pro is not yet attached to this system."
-            echo "USG requires Ubuntu Pro (free for up to 5 machines)."
-            echo "Get your token at: https://ubuntu.com/pro"
-            echo
-            read -rp "Enter your Ubuntu Pro token: " PRO_TOKEN
-            [[ -n "$PRO_TOKEN" ]] || die "No Ubuntu Pro token provided. Aborting."
-        fi
-        export PRO_TOKEN
+    if ! command -v usg >/dev/null 2>&1 && ! pro_is_attached; then
+        echo
+        echo "Ubuntu Pro is not yet attached to this system."
+        echo "USG requires Ubuntu Pro (free for up to 5 machines)."
+        echo "Get your token at: https://ubuntu.com/pro"
+        echo
+        read -rp "Enter your Ubuntu Pro token: " PRO_TOKEN
+        [[ -n "$PRO_TOKEN" ]] || die "No Ubuntu Pro token provided. Aborting."
     fi
+    export PRO_TOKEN
 
     # ── Reboot preference (hardening only) ──────────────────────────────────
     REBOOT_CHOICE="no"
@@ -196,12 +196,14 @@ collect_answers() {
     echo
     log info "Answers collected — starting unattended run"
     log info "  Profile        : $PROFILE ($USG_PROFILE)"
+    if [[ -n "$PRO_TOKEN" ]]; then
+        log info "  Ubuntu Pro     : token supplied, will attach"
+    elif command -v usg >/dev/null 2>&1; then
+        log info "  Ubuntu Pro     : USG already installed, no token needed"
+    else
+        log info "  Ubuntu Pro     : already attached"
+    fi
     if [[ "$mode" == "harden" ]]; then
-        if [[ -n "$PRO_TOKEN" ]]; then
-            log info "  Ubuntu Pro     : token supplied, will attach"
-        else
-            log info "  Ubuntu Pro     : already attached"
-        fi
         log info "  Auto-reboot    : $REBOOT_CHOICE"
     fi
     echo
