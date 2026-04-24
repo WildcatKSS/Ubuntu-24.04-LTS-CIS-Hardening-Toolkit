@@ -208,7 +208,7 @@ collect_answers() {
 }
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Ubuntu full update (apt update + dist-upgrade + autoremove)
+# Ubuntu full update (apt update + upgrade + dist-upgrade + autoremove)
 # ─────────────────────────────────────────────────────────────────────────────
 
 system_update() {
@@ -216,13 +216,16 @@ system_update() {
     export DEBIAN_FRONTEND=noninteractive
     local apt_opts=(-y -o Dpkg::Options::=--force-confdef -o Dpkg::Options::=--force-confold)
 
-    log info "[1/3] apt-get update"
+    log info "[1/4] apt-get update"
     apt-get update || die "apt-get update failed."
 
-    log info "[2/3] apt-get dist-upgrade"
+    log info "[2/4] apt-get upgrade"
+    apt-get "${apt_opts[@]}" upgrade || die "apt-get upgrade failed."
+
+    log info "[3/4] apt-get dist-upgrade"
     apt-get "${apt_opts[@]}" dist-upgrade || die "apt-get dist-upgrade failed."
 
-    log info "[3/3] apt-get autoremove"
+    log info "[4/4] apt-get autoremove"
     apt-get "${apt_opts[@]}" autoremove || log warning "apt-get autoremove reported a non-zero exit."
 
     log success "System is fully up to date."
@@ -393,7 +396,7 @@ build_usg_args() {
 
     if [[ -f "$tailoring_file" ]]; then
         log info "Tailoring file found: $tailoring_file"
-        USG_ARGS=("--tailoring-file" "$tailoring_file" "$USG_PROFILE")
+        USG_ARGS=("--tailoring-file" "$tailoring_file")
     fi
 
     export USG_ARGS
