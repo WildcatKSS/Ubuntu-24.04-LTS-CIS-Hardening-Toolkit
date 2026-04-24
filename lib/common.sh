@@ -397,27 +397,28 @@ build_usg_args() {
     if [[ -f "$tailoring_file" ]]; then
         log info "Tailoring file found: $tailoring_file"
 
-        # usg/OpenSCAP only trusts --tailoring-file when the file and its
-        # parent directory are owned by root or the current user. After a
-        # clone as a non-root user, both sit on uid != 0 while we run as
-        # root via sudo, which triggers a warning. Normalize ownership and
-        # mode so the trust check passes. Safe because require_root() has
-        # already asserted EUID 0.
-        if [[ "$(stat -c '%u' "$tailoring_file")" != "0" ]]; then
-            log info "Normalizing ownership of $tailoring_file to root:root"
-            chown root:root "$tailoring_file" \
-                || log warning "chown failed on $tailoring_file"
-            chmod 0644 "$tailoring_file" || true
-        fi
-        if [[ -d "$tailoring_dir" \
-              && "$(stat -c '%u' "$tailoring_dir")" != "0" ]]; then
-            log info "Normalizing ownership of $tailoring_dir to root:root"
-            chown root:root "$tailoring_dir" \
-                || log warning "chown failed on $tailoring_dir"
-            chmod 0755 "$tailoring_dir" || true
-        fi
+        # usg/OpenSCAP walks every parent directory of --tailoring-file and
+        # refuses to trust the file unless each one is owned by root or the
+        # current user. When the repo lives under a user's home (or any path
+        # with a non-root ancestor), that check fails. Rather than chown the
+        # user's directories, stage the tailoring file in a root-owned temp
+        # directory whose ancestors (/tmp, /) are already root-owned.
+        local staged_dir staged_file
+        staged_dir="$(mktemp -d /tmp/cis-hardening-tailoring.XXXXXX)" \
+            || die "Failed to create temp directory for tailoring file."
+        chown root:root "$staged_dir"
+        chmod 0755 "$staged_dir"
+        staged_file="$staged_dir/${PROFILE}.xml"
+        cp -- "$tailoring_file" "$staged_file" \
+            || die "Failed to stage tailoring file in $staged_dir."
+        chown root:root "$staged_file"
+        chmod 0644 "$staged_file"
 
-        USG_ARGS=("--tailoring-file" "$tailoring_file")
+        # Clean up the staged copy on exit so /tmp doesn't fill up over time.
+        # shellcheck disable=SC2064  # intentional early expansion of $staged_dir
+        trap "rm -rf -- '$staged_dir'" EXIT
+
+        USG_ARGS=("--tailoring-file" "$staged_file")
     fi
 
     export USG_ARGS
