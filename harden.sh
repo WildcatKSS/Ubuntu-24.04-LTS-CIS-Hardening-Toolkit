@@ -18,7 +18,6 @@ collect_answers harden
 system_update
 require_usg
 ensure_packages w3m
-create_backup
 build_usg_args "$SCRIPT_DIR/tailoring"
 
 log info "Profile: $USG_PROFILE"
@@ -26,7 +25,7 @@ log info "Running USG fix..."
 
 usg fix "${USG_ARGS[@]}"
 
-log success "Hardening complete. Backup saved at: $BACKUP_FILE"
+log success "Hardening complete."
 
 if [[ "${REBOOT_CHOICE:-no}" == "yes" ]]; then
     log notice "Auto-reboot requested — rebooting now..."
@@ -34,5 +33,3 @@ if [[ "${REBOOT_CHOICE:-no}" == "yes" ]]; then
 else
     log info "Restart the system manually when ready: sudo reboot"
 fi
-
-log info "To roll back if needed: sudo ./rollback.sh"

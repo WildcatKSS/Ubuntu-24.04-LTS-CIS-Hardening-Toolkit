@@ -8,11 +8,10 @@ Thumbs.db
 .idea/
 
 # Runtime output accidentally dropped in the repo dir
-# (scripts write to /var/log, /var/backups, /var/lib/usg — these patterns
-# catch copies that end up here during testing or local runs.)
+# (scripts write to /var/log and /var/lib/usg — these patterns catch
+# copies that end up here during testing or local runs.)
 *.log
 report-*.html
-pre-hardening-*.tar.gz
 usg-report*.html
 usg-results*.xml
 

@@ -39,15 +39,7 @@ The script asks every question **up front** so the rest of the run is fully unat
 2. Ubuntu Pro token — only prompted if the machine is not yet attached
 3. Whether to automatically reboot when hardening finishes
 
-After you answer these, the script runs end-to-end without further input: it updates Ubuntu, sets up Ubuntu Pro + USG, backs up system configuration to `/var/backups/cis-hardening/`, applies the CIS profile, and reboots (or exits) based on your earlier answer.
-
-### Roll back
-
-```bash
-sudo ./rollback.sh
-```
-
-Restores the most recent pre-hardening backup and asks for confirmation before making any changes.
+After you answer these, the script runs end-to-end without further input: it updates Ubuntu, sets up Ubuntu Pro + USG, applies the CIS profile, and reboots (or exits) based on your earlier answer.
 
 ### Audit compliance (read-only)
 
@@ -69,10 +61,9 @@ The HTML report is saved to `/var/log/cis-audit/` and `/var/lib/usg/usg-report.h
 4. **Full Ubuntu update**: `apt-get update` → `apt-get dist-upgrade -y` → `apt-get autoremove -y` (with `DEBIAN_FRONTEND=noninteractive` and `--force-confold` to avoid dpkg prompts)
 5. Ubuntu Pro setup: install `ubuntu-advantage-tools` if missing, `pro attach` using the collected token, `pro enable usg`
 6. Install the `usg` package if it is not already present
-7. Back up `/etc/ssh`, `/etc/pam.d`, `/etc/security`, `/etc/sysctl.*`, `/etc/audit`, `/etc/rsyslog.*`, `/etc/modprobe.d`, `/etc/login.defs`, `/etc/sudoers*`, `/etc/cron.*`, `/etc/fstab`, `/boot/grub/grub.cfg` to `/var/backups/cis-hardening/pre-hardening-<timestamp>.tar.gz`
-8. Build USG arguments (adds `--tailoring-file` if `tailoring/<profile>.xml` exists)
-9. Run `usg fix <profile>` to apply the benchmark
-10. Reboot automatically (if you chose yes) or log a reminder to run `sudo reboot`
+7. Build USG arguments (adds `--tailoring-file` if `tailoring/<profile>.xml` exists)
+8. Run `usg fix <profile>` to apply the benchmark
+9. Reboot automatically (if you chose yes) or log a reminder to run `sudo reboot`
 
 ### `audit.sh` (read-only)
 
@@ -81,15 +72,6 @@ The HTML report is saved to `/var/log/cis-audit/` and `/var/lib/usg/usg-report.h
 3. Ask which profile to audit
 4. Run `usg audit <profile>` (never modifies the system; exit code 1 on non-compliance is expected)
 5. Copy the HTML report to `/var/log/cis-audit/report-<timestamp>.html`
-
-### `rollback.sh`
-
-1. Initialise logging
-2. Require root
-3. Find the most recent `pre-hardening-*.tar.gz` in `/var/backups/cis-hardening/`
-4. Ask for confirmation (the only question)
-5. Extract the tarball over `/` to restore configuration
-6. Advise manual `sudo reboot`
 
 ### `change-cis-profile.sh`
 
@@ -163,12 +145,11 @@ Tailoring files are loaded automatically when present — no extra configuration
 .
 ├── harden.sh                  # Full Ubuntu update + CIS hardening via USG fix (unattended)
 ├── audit.sh                   # Compliance audit via USG audit (read-only)
-├── rollback.sh                # Restore the most recent pre-hardening backup
 ├── change-cis-profile.sh      # Customise a profile via the USG tailoring wizard
 ├── lib/
 │   └── common.sh              # Shared helpers: 8-level logger (file + syslog),
 │                              #   init_logging, collect_answers (upfront questions),
-│                              #   system_update, preflight, USG/Pro setup, backup
+│                              #   system_update, preflight, USG/Pro setup
 └── tailoring/
     ├── level1-server.xml      # Optional customisations for the L1 profile
     └── level2-server.xml      # Optional customisations for the L2 profile
