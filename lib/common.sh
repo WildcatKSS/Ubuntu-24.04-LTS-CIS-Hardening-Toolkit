@@ -29,7 +29,6 @@ readonly YELLOW="${LOG_COLORS[4]}"
 readonly BLUE="${LOG_COLORS[6]}"
 
 readonly LOG_FILE="/var/log/cis-hardening.log"
-readonly BACKUP_DIR="/var/backups/cis-hardening"
 readonly REQUIRED_UBUNTU_VERSION="24.04"
 
 : "${LOG_LEVEL:=7}"          # default: log everything
@@ -331,52 +330,8 @@ ensure_packages() {
 }
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Backup + profile helpers
+# Profile helpers
 # ─────────────────────────────────────────────────────────────────────────────
-
-# Backs up system configuration files typically modified by USG.
-# Saves a tar.gz to $BACKUP_DIR and a plain-text filelist next to it, so
-# rollback.sh can also detect (and remove) files that USG added after the
-# backup was taken. Exports BACKUP_FILE and BACKUP_FILELIST.
-create_backup() {
-    local timestamp
-    timestamp=$(date +%Y%m%d-%H%M%S)
-    local backup_file="$BACKUP_DIR/pre-hardening-${timestamp}.tar.gz"
-    local filelist="$BACKUP_DIR/pre-hardening-${timestamp}.files.txt"
-
-    mkdir -p "$BACKUP_DIR"
-    log info "Backing up system configuration..."
-
-    # /etc as a whole (cheap, small) + root's shell dotfiles + grub config.
-    # USG edits spread across many /etc subdirs (modprobe.d, sysctl.d,
-    # audit/rules.d, profile.d, systemd, apparmor.d, ...), so a whitelist is
-    # fragile. Capturing /etc wholesale avoids the "we didn't back up that
-    # directory" class of bug.
-    local paths_to_backup=(
-        /etc
-        /boot/grub/grub.cfg
-        /root/.bashrc
-        /root/.profile
-    )
-
-    local existing=()
-    for path in "${paths_to_backup[@]}"; do
-        [[ -e "$path" ]] && existing+=("$path")
-    done
-
-    # Snapshot every regular file currently under the backed-up roots.
-    # rollback.sh uses this list to remove files that appear later (i.e.
-    # files USG added), which tar -xzf cannot do on its own.
-    find "${existing[@]}" -xdev -type f 2>/dev/null | sort > "$filelist"
-
-    tar -czf "$backup_file" "${existing[@]}" 2>/dev/null \
-        || log warning "Some files could not be included in the backup."
-
-    export BACKUP_FILE="$backup_file"
-    export BACKUP_FILELIST="$filelist"
-    log success "Backup saved: $backup_file"
-    log info "File list saved: $filelist"
-}
 
 # Displays the profile menu if $PROFILE is not already set by collect_answers().
 # Exports PROFILE (short name) and USG_PROFILE (usg profile name).
