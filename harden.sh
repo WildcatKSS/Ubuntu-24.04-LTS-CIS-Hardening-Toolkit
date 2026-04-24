@@ -17,6 +17,7 @@ collect_answers harden
 
 system_update
 require_usg
+ensure_packages w3m
 create_backup
 build_usg_args "$SCRIPT_DIR/tailoring"
 

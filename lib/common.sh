@@ -314,6 +314,22 @@ require_usg() {
     log success "USG package installed."
 }
 
+# Installs missing apt packages. No-op when every package is already present.
+# Usage: ensure_packages w3m [other-pkg...]
+ensure_packages() {
+    local missing=()
+    local pkg
+    for pkg in "$@"; do
+        dpkg -s "$pkg" >/dev/null 2>&1 || missing+=("$pkg")
+    done
+    (( ${#missing[@]} )) || return 0
+
+    log info "Installing missing package(s): ${missing[*]}"
+    DEBIAN_FRONTEND=noninteractive apt-get install -y "${missing[@]}" \
+        || die "Failed to install package(s): ${missing[*]}"
+    log success "Installed: ${missing[*]}"
+}
+
 # ─────────────────────────────────────────────────────────────────────────────
 # Backup + profile helpers
 # ─────────────────────────────────────────────────────────────────────────────
