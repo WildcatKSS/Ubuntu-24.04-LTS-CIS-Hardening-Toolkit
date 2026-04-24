@@ -168,12 +168,7 @@ collect_answers() {
     # ── Ubuntu Pro token (only if hardening and not yet attached) ───────────
     PRO_TOKEN=""
     if [[ "$mode" == "harden" ]]; then
-        local attached=0
-        if command -v pro >/dev/null 2>&1 \
-            && pro status 2>/dev/null | grep -q "This machine is attached"; then
-            attached=1
-        fi
-        if (( ! attached )); then
+        if ! pro_is_attached; then
             echo
             echo "Ubuntu Pro is not yet attached to this system."
             echo "USG requires Ubuntu Pro (free for up to 5 machines)."
@@ -237,6 +232,17 @@ system_update() {
 # Ubuntu Pro + USG setup
 # ─────────────────────────────────────────────────────────────────────────────
 
+# Returns 0 when this host is already attached to Ubuntu Pro, 1 otherwise.
+# Uses `pro status --format json` because the plain-text output no longer
+# contains the "This machine is attached" string on current pro-client
+# releases shipped with Ubuntu 24.04.
+pro_is_attached() {
+    command -v pro >/dev/null 2>&1 || return 1
+    local json
+    json="$(pro status --format json 2>/dev/null)" || return 1
+    grep -Eq '"attached"[[:space:]]*:[[:space:]]*true' <<<"$json"
+}
+
 # Ensures Ubuntu Pro is attached and the USG service is enabled.
 # Uses the pre-collected $PRO_TOKEN from collect_answers() — does NOT prompt.
 setup_ubuntu_pro() {
@@ -254,15 +260,25 @@ setup_ubuntu_pro() {
     fi
 
     # Step 2 — Attach Ubuntu Pro
-    if ! pro status 2>/dev/null | grep -q "This machine is attached"; then
+    if pro_is_attached; then
+        log info "[2/3] Ubuntu Pro is already attached."
+    else
         [[ -n "${PRO_TOKEN:-}" ]] \
             || die "Ubuntu Pro not attached and no token collected. Re-run and provide a token."
         log info "[2/3] Attaching Ubuntu Pro with collected token..."
-        pro attach "$PRO_TOKEN" \
-            || die "Ubuntu Pro attach failed. Check your token and try again."
-        log success "[2/3] Ubuntu Pro attached successfully."
-    else
-        log info "[2/3] Ubuntu Pro is already attached."
+        local attach_out
+        if attach_out="$(pro attach "$PRO_TOKEN" 2>&1)"; then
+            printf '%s\n' "$attach_out"
+            log success "[2/3] Ubuntu Pro attached successfully."
+        elif grep -qi "already attached" <<<"$attach_out"; then
+            # Safety net: host was attached between our check and this call,
+            # or detection still failed on an exotic pro-client version.
+            printf '%s\n' "$attach_out"
+            log info "[2/3] Ubuntu Pro was already attached — continuing."
+        else
+            printf '%s\n' "$attach_out" >&2
+            die "Ubuntu Pro attach failed. Check your token and try again."
+        fi
     fi
 
     # Step 3 — Enable USG service
